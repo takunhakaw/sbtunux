@@ -1059,7 +1059,10 @@
             <h3 class="text-base font-bold text-slate-900">Google 試算表雲端後台連線（Apps Script）</h3>
             <p class="text-xs text-slate-500 mt-0.5">貼上部署完成的 Apps Script 網頁應用程式網址（Web App URL），即可將所有設定、科目與流水帳直接讀寫至 Google 試算表。</p>
           </div>
-          <span id="cloud-sync-status" class="text-xs text-slate-400">尚未設定網址</span>
+          <div class="flex items-center gap-2">
+            <span id="cloud-sync-status" class="text-xs text-slate-400">尚未設定網址</span>
+            <button id="btn-logout" type="button" class="px-2.5 py-1 rounded-lg border border-slate-300 bg-white text-slate-700 text-xs font-medium hover:bg-slate-50 whitespace-nowrap">登出（清除密碼）</button>
+          </div>
         </div>
         <div class="flex flex-col sm:flex-row gap-2">
           <input id="setting-gas-url" type="url" placeholder="https://script.google.com/macros/s/AKfycbzEaxKumpTwKKd1e7FZJ4jK7X7LUUaJut0xzXt07Jjc_n7W1_mhdLLh5nCnwFJGop-SrA/exec" class="flex-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" />
@@ -1246,7 +1249,7 @@
           '青年事工組長': '',
           '兒童事工組長': ''
         },
-        gasUrl: ''
+        gasUrl: 'https://script.google.com/macros/s/AKfycbzEaxKumpTwKKd1e7FZJ4jK7X7LUUaJut0xzXt07Jjc_n7W1_mhdLLh5nCnwFJGop-SrA/exec'
       };
 
       const DEFAULT_ACCOUNTS = [
@@ -1323,6 +1326,9 @@
               if (!Array.isArray(state.settings.feeHistory)) {
                 state.settings.feeHistory = [];
               }
+              if (!(state.settings.gasUrl || '').trim()) {
+                state.settings.gasUrl = DEFAULT_SETTINGS.gasUrl;
+              }
             }
             if (Array.isArray(parsed.accounts) && parsed.accounts.length > 0) {
               state.accounts = parsed.accounts;
@@ -1348,6 +1354,83 @@
       let autoSyncTimer = null;
       let autoSyncCountdownTimer = null;
 
+      // ===== 後台密碼 / 登入遮罩 =====
+      const PWD_KEY = 'sbtunux_admin_pwd';
+      let adminPwd = '';
+      try { adminPwd = sessionStorage.getItem(PWD_KEY) || ''; } catch (e) {}
+
+      function setAdminPwd(p) {
+        adminPwd = p || '';
+        try {
+          if (adminPwd) sessionStorage.setItem(PWD_KEY, adminPwd);
+          else sessionStorage.removeItem(PWD_KEY);
+        } catch (e) {}
+      }
+
+      function showLogin(msg) {
+        clearTimeout(autoSyncTimer);
+        clearInterval(autoSyncCountdownTimer);
+        autoSyncTimer = null;
+        autoSyncCountdownTimer = null;
+        const ov = document.getElementById('login-overlay');
+        if (ov) ov.classList.remove('hidden');
+        const errEl = document.getElementById('login-error-msg');
+        if (errEl) {
+          if (msg) {
+            errEl.textContent = msg;
+            errEl.classList.remove('hidden');
+          } else {
+            errEl.classList.add('hidden');
+          }
+        }
+        const inp = document.getElementById('login-password');
+        if (inp) setTimeout(() => inp.focus(), 50);
+      }
+
+      function hideLogin() {
+        const ov = document.getElementById('login-overlay');
+        if (ov) ov.classList.add('hidden');
+      }
+
+      function cloudGetUrl(url) {
+        return url + (url.indexOf('?') === -1 ? '?' : '&') + 'pwd=' + encodeURIComponent(adminPwd);
+      }
+
+      function applyCloudData(d, url) {
+        if (d.settings) {
+          state.settings = Object.assign({}, JSON.parse(JSON.stringify(DEFAULT_SETTINGS)), d.settings, { gasUrl: url });
+        }
+        if (Array.isArray(d.accounts) && d.accounts.length > 0) state.accounts = d.accounts;
+        if (Array.isArray(d.transactions)) state.transactions = d.transactions;
+        if (Array.isArray(d.meetings)) state.meetings = d.meetings;
+        if (Array.isArray(d.archivedYears)) state.archivedYears = d.archivedYears;
+        saveState({ skipAutoSync: true });
+        populateWalletControls();
+        populateAccountDropdown();
+        populateCategoryDropdown();
+        populateExpDetailCatFilter();
+        populateSettingsForm();
+        renderAll();
+      }
+
+      // 回傳 { status: 'ok' | 'error' | 'net', hasData, error }
+      async function pullFromCloud() {
+        const url = (state.settings.gasUrl || '').trim();
+        if (!url) return { status: 'error', error: '尚未設定 Apps Script 網址' };
+        try {
+          const res = await fetch(cloudGetUrl(url));
+          const json = await res.json();
+          if (json && json.ok) {
+            const d = json.data || {};
+            if (d.hasData) applyCloudData(d, url);
+            return { status: 'ok', hasData: Boolean(d.hasData) };
+          }
+          return { status: 'error', error: (json && json.error) || '未知錯誤', authError: Boolean(json && json.authError) };
+        } catch (err) {
+          return { status: 'net' };
+        }
+      }
+
       function updateCloudSyncUI(statusText, quickBtnText) {
         const statusEl = document.getElementById('cloud-sync-status');
         if (statusEl && statusText !== undefined) statusEl.textContent = statusText;
@@ -1362,6 +1445,10 @@
           if (!silent) showToast('請先輸入 Apps Script 網頁應用程式網址');
           return;
         }
+        if (!adminPwd) {
+          showLogin('請先輸入後台存取密碼');
+          return;
+        }
         clearTimeout(autoSyncTimer);
         clearInterval(autoSyncCountdownTimer);
         autoSyncTimer = null;
@@ -1373,6 +1460,7 @@
             method: 'POST',
             headers: { 'Content-Type': 'text/plain;charset=utf-8' },
             body: JSON.stringify({
+              pwd: adminPwd,
               settings: state.settings,
               accounts: state.accounts,
               transactions: state.transactions,
@@ -1389,6 +1477,10 @@
               if (!autoSyncTimer) updateCloudSyncUI(undefined, '☁️ 同步雲端');
             }, 3000);
             showToast(silent ? '已自動同步至 Google 試算表' : (json.msg || '已成功儲存至 Google 試算表'));
+          } else if (json && json.authError) {
+            setAdminPwd('');
+            updateCloudSyncUI('密碼驗證失敗，請重新登入', '☁️ 同步雲端');
+            showLogin(json.error || '密碼錯誤，請重新登入');
           } else {
             updateCloudSyncUI('同步失敗', '☁️ 同步失敗');
             showToast('同步失敗：' + ((json && json.error) || '未知錯誤'));
@@ -1401,7 +1493,7 @@
 
       function scheduleAutoCloudSync() {
         const url = (state.settings.gasUrl || '').trim();
-        if (!url) return;
+        if (!url || !adminPwd) return;
         clearTimeout(autoSyncTimer);
         clearInterval(autoSyncCountdownTimer);
         let secs = 10;
@@ -2808,36 +2900,70 @@
         if (window.innerWidth < 768) {
           switchTab('journal');
         }
-        if ((state.settings.gasUrl || '').trim()) {
-          (async function autoPullOnStartup() {
-            const url = state.settings.gasUrl.trim();
-            updateCloudSyncUI('☁️ 載入雲端最新資料中...', '☁️ 載入中...');
-            try {
-              const res = await fetch(url);
-              const json = await res.json();
-              if (json && json.ok && json.data && json.data.hasData) {
-                if (json.data.settings) {
-                  state.settings = Object.assign({}, JSON.parse(JSON.stringify(DEFAULT_SETTINGS)), json.data.settings, { gasUrl: url });
-                }
-                if (Array.isArray(json.data.accounts) && json.data.accounts.length > 0) state.accounts = json.data.accounts;
-                if (Array.isArray(json.data.transactions)) state.transactions = json.data.transactions;
-                if (Array.isArray(json.data.meetings)) state.meetings = json.data.meetings;
-                if (Array.isArray(json.data.archivedYears)) state.archivedYears = json.data.archivedYears;
-                saveState({ skipAutoSync: true });
-                populateWalletControls();
-                populateAccountDropdown();
-                populateCategoryDropdown();
-                populateExpDetailCatFilter();
-                populateSettingsForm();
-                renderAll();
-                updateCloudSyncUI('已同步最新雲端資料', '☁️ 同步雲端');
-              } else {
-                updateCloudSyncUI('已連線（雲端尚無資料）', '☁️ 同步雲端');
-              }
-            } catch (e) {
+        // ===== 登入流程：密碼一律交由 Apps Script 驗證 =====
+        const loginForm = document.getElementById('login-form');
+        loginForm.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const pwdInput = document.getElementById('login-password');
+          const errEl = document.getElementById('login-error-msg');
+          const btn = loginForm.querySelector('button[type="submit"]');
+          const origText = btn.textContent;
+          const pwd = pwdInput.value.trim();
+          errEl.classList.add('hidden');
+          if (!pwd) {
+            errEl.textContent = '請輸入後台存取密碼';
+            errEl.classList.remove('hidden');
+            return;
+          }
+          btn.disabled = true;
+          btn.textContent = '正在驗證密碼...';
+          adminPwd = pwd;
+          updateCloudSyncUI('☁️ 驗證並載入雲端資料中...', '☁️ 載入中...');
+          const r = await pullFromCloud();
+          btn.disabled = false;
+          btn.textContent = origText;
+          if (r.status === 'ok') {
+            setAdminPwd(pwd);
+            pwdInput.value = '';
+            hideLogin();
+            updateCloudSyncUI(r.hasData ? '已同步最新雲端資料' : '已連線（雲端尚無資料）', '☁️ 同步雲端');
+            showToast('登入成功');
+          } else {
+            setAdminPwd('');
+            updateCloudSyncUI('尚未登入', '☁️ 同步雲端');
+            errEl.textContent = r.status === 'net'
+              ? '無法連線至 Apps Script，請確認網路、部署網址與存取權限（所有人）'
+              : (r.error || '登入失敗');
+            errEl.classList.remove('hidden');
+            pwdInput.select();
+          }
+        });
+
+        const logoutBtn = document.getElementById('btn-logout');
+        if (logoutBtn) {
+          logoutBtn.addEventListener('click', () => {
+            setAdminPwd('');
+            updateCloudSyncUI('已登出', '☁️ 同步雲端');
+            showLogin();
+          });
+        }
+
+        if (adminPwd) {
+          // 同一分頁已登入過：直接解鎖並在背景更新雲端資料
+          hideLogin();
+          updateCloudSyncUI('☁️ 載入雲端最新資料中...', '☁️ 載入中...');
+          pullFromCloud().then((r) => {
+            if (r.status === 'ok') {
+              updateCloudSyncUI(r.hasData ? '已同步最新雲端資料' : '已連線（雲端尚無資料）', '☁️ 同步雲端');
+            } else if (r.status === 'net') {
               updateCloudSyncUI('雲端自動載入失敗（使用本機資料）', '☁️ 同步雲端');
+            } else {
+              setAdminPwd('');
+              showLogin(r.error || '請重新登入');
             }
-          })();
+          });
+        } else {
+          showLogin();
         }
 
         // Direct inline editing in Report tables (auto-sum without losing focus)
@@ -3449,6 +3575,10 @@
           }
           state.settings.gasUrl = url;
           saveState({ skipAutoSync: true });
+          if (!adminPwd) {
+            showLogin('請先輸入後台存取密碼');
+            return;
+          }
           await syncToCloud({ silent: false });
         });
 
@@ -3463,8 +3593,19 @@
           const statusEl = document.getElementById('cloud-sync-status');
           statusEl.textContent = '從試算表載入中...';
           try {
-            const res = await fetch(url);
+            if (!adminPwd) {
+              statusEl.textContent = '尚未登入';
+              showLogin('請先輸入後台存取密碼');
+              return;
+            }
+            const res = await fetch(cloudGetUrl(url));
             const json = await res.json();
+            if (json && json.authError) {
+              setAdminPwd('');
+              statusEl.textContent = '密碼驗證失敗';
+              showLogin(json.error || '密碼錯誤，請重新登入');
+              return;
+            }
             if (json && json.ok && json.data) {
               if (!json.data.hasData) {
                 statusEl.textContent = '試算表尚無資料';
@@ -3486,7 +3627,7 @@
               if (Array.isArray(json.data.archivedYears)) {
                 state.archivedYears = json.data.archivedYears;
               }
-              saveState();
+              saveState({ skipAutoSync: true });
               populateWalletControls();
               populateAccountDropdown();
               populateCategoryDropdown();
@@ -4093,100 +4234,6 @@
       // journal is the mobile landing tab, so FAB starts hidden there
       if (window.__syncNav) window.__syncNav(isMobile() ? 'journal' : 'report');
     })();
-
-    // ===== 登入驗證與防暴力破解功能 =====
-    const LOGIN_LOCK_KEY = 'sbtunux_login_lock_until';
-    const LOGIN_ATTEMPTS_KEY = 'sbtunux_login_attempts';
-    const MAX_ATTEMPTS = 3;
-    const LOCK_DURATION_MS = 5 * 60 * 1000; // 5 分鐘
-
-    document.getElementById('auth-form').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      
-      const pwdInput = document.getElementById('auth-password');
-      const errEl = document.getElementById('auth-error-msg');
-      const submitBtn = document.getElementById('btn-auth-submit');
-      const pwd = pwdInput.value.trim();
-      
-      errEl.classList.add('hidden');
-
-      // 1. 檢查是否處於鎖定狀態
-      const lockUntil = Number(localStorage.getItem(LOGIN_LOCK_KEY) || 0);
-      const now = Date.now();
-      if (now < lockUntil) {
-        const remainingSec = Math.ceil((lockUntil - now) / 1000);
-        errEl.textContent = `登入錯誤次數過多，已被鎖定。請於 ${Math.ceil(remainingSec / 60)} 分鐘後再試。`;
-        errEl.classList.remove('hidden');
-        return;
-      }
-
-      if (!pwd) {
-        errEl.textContent = '請輸入管理者密碼';
-        errEl.classList.remove('hidden');
-        return;
-      }
-
-      // 2. 檢查是否有設定 GAS 網址（透過 doGet 驗證密碼並從雲端載入資料）
-      const gasUrl = (typeof state !== 'undefined' && state.settings && state.settings.gasUrl) ? state.settings.gasUrl.trim() : '';
-      
-      if (gasUrl) {
-        try {
-          submitBtn.disabled = true;
-          submitBtn.textContent = '正在驗證密碼...';
-          
-          const res = await fetch(`${gasUrl}?pwd=${encodeURIComponent(pwd)}`);
-          const json = await res.json();
-          
-          if (json && json.ok) {
-            localStorage.removeItem(LOGIN_ATTEMPTS_KEY);
-            localStorage.removeItem(LOGIN_LOCK_KEY);
-            
-            if (json.data && json.data.hasData) {
-              if (typeof state !== 'undefined') {
-                Object.assign(state, DEFAULT_SETTINGS, json.data);
-                if (typeof renderAll === 'function') renderAll();
-              }
-            }
-            
-            const modal = document.getElementById('auth-modal');
-            if (modal) modal.classList.add('hidden');
-            return;
-          } else {
-            throw new Error(json.error || '密碼錯誤');
-          }
-        } catch (err) {
-          console.warn('雲端驗證失敗，改用本地密碼比對:', err);
-        } finally {
-          submitBtn.disabled = false;
-          submitBtn.textContent = '安全登入';
-        }
-      }
-
-      // 3. 本地備用密碼比對（預設為 admin123）
-      const correctPassword = (typeof state !== 'undefined' && state.settings && state.settings.adminPassword) ? state.settings.adminPassword : 'admin123';
-      
-      if (pwd === correctPassword) {
-        localStorage.removeItem(LOGIN_ATTEMPTS_KEY);
-        localStorage.removeItem(LOGIN_LOCK_KEY);
-        
-        const modal = document.getElementById('auth-modal');
-        if (modal) modal.classList.add('hidden');
-        
-        if (typeof showToast === 'function') showToast('登入成功！');
-      } else {
-        let attempts = Number(localStorage.getItem(LOGIN_ATTEMPTS_KEY) || 0) + 1;
-        localStorage.setItem(LOGIN_ATTEMPTS_KEY, attempts);
-        
-        if (attempts >= MAX_ATTEMPTS) {
-          const lockTime = Date.now() + LOCK_DURATION_MS;
-          localStorage.setItem(LOGIN_LOCK_KEY, lockTime);
-          errEl.textContent = `密碼連續錯誤達 ${MAX_ATTEMPTS} 次，系統已鎖定 5 分鐘。`;
-        } else {
-          errEl.textContent = `密碼錯誤！您還有 ${MAX_ATTEMPTS - attempts} 次嘗試機會。`;
-        }
-        errEl.classList.remove('hidden');
-      }
-    });
   </script>
 </body>
 </html>
