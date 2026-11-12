@@ -90,6 +90,12 @@
     @media (min-width: 768px) {
       #bottom-nav, #more-sheet, #btn-mobile-fab { display: none !important; }
     }
+    @media print {
+      #expdetail-chart { overflow: visible !important; }
+      #expdetail-chart svg { width: 100% !important; height: auto !important; max-width: 100% !important; }
+      #expdetail-chart-legend button { border: none !important; background: transparent !important; }
+      * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
     @media print { #bottom-nav, #more-sheet, #btn-mobile-fab, #tx-sheet-backdrop { display: none !important; } }
 
     /* ===== 登入畫面遮罩樣式 ===== */
@@ -277,6 +283,9 @@
             </table>
           </div>
         </div>
+
+        <!-- Budget balance check -->
+        <div id="budget-check-box" class="mt-5 print-break-inside-avoid"></div>
       </div>
     </section>
 
@@ -459,6 +468,15 @@
               列印明細表
             </button>
           </div>
+        </div>
+
+        <div class="border border-slate-200 rounded-lg p-3 sm:p-4 print-break-inside-avoid">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+            <h3 id="expdetail-chart-title" class="text-sm font-bold text-slate-900">支出科目對照折線圖</h3>
+            <div id="expdetail-chart-legend" class="flex flex-wrap items-center gap-1.5"></div>
+          </div>
+          <p class="text-[11px] text-slate-500 mb-1 no-print">左軸：金額（TWD）｜右軸：預算執行率（%，虛線）。點選上方圖例可顯示／隱藏線條，游標移到圓點可看數值。</p>
+          <div id="expdetail-chart" class="overflow-x-auto"></div>
         </div>
 
         <div class="overflow-x-auto border border-slate-200 rounded-lg">
@@ -1531,6 +1549,145 @@
         }
       }
 
+      function renderBudgetCheck() {
+        const box = document.getElementById('budget-check-box');
+        if (!box) return;
+        const t = computeTotals();
+        const s = state.settings;
+        const cols = [
+          { label: `${s.baseYear}預算`, inc: t.inc2025Budget, exp: t.exp2025Budget, open: t.prev2025Carry },
+          { label: `${s.baseYear}決算`, inc: t.inc2025Actual, exp: t.exp2025Actual, open: t.prev2025Carry },
+          { label: `${s.currentYear}預算`, inc: t.inc2026Budget, exp: t.exp2026Budget, open: t.carry2026 },
+          { label: `${s.currentYear}實際`, inc: t.inc2026Actual, exp: t.exp2026Actual, open: t.carry2026 }
+        ];
+        const money = (n) => (n < 0 ? '-$' : '$') + fmt(Math.abs(n));
+        const info = cols.map(c => {
+          const diff = c.inc - c.exp;
+          const after = c.open + diff;
+          let badge, cls;
+          if (c.inc === 0 && c.exp === 0) { badge = '尚未輸入'; cls = 'bg-slate-100 text-slate-600'; }
+          else if (diff === 0) { badge = '✔ 收支平衡'; cls = 'bg-emerald-100 text-emerald-800'; }
+          else if (diff > 0) { badge = `✔ 盈餘 ${money(diff)}`; cls = 'bg-emerald-100 text-emerald-800'; }
+          else if (after >= 0) { badge = `⚠ 赤字 ${money(diff)}（需動用結存金）`; cls = 'bg-amber-100 text-amber-800'; }
+          else { badge = `✖ 赤字 ${money(diff)}（結存金不足）`; cls = 'bg-rose-100 text-rose-800'; }
+          return { c, diff, after, badge, cls };
+        });
+        const over = [];
+        state.accounts.filter(a => a.type === 'expense').forEach(a => {
+          const b = Number(a.b2026) || 0;
+          const act = getActual2026ByAccountId(a.id);
+          if (b > 0 && act > b) over.push(`${a.name}：超支 $${fmt(act - b)}（預算 $${fmt(b)}、實際 $${fmt(act)}）`);
+          else if (b === 0 && act > 0) over.push(`${a.name}：未編列預算卻已支出 $${fmt(act)}`);
+        });
+        const th = 'px-2.5 py-1.5 font-semibold text-right whitespace-nowrap';
+        const td = 'px-2.5 py-1.5 text-right tabular-nums whitespace-nowrap';
+        box.innerHTML = `
+          <div class="rounded-xl border border-slate-200 overflow-hidden">
+            <div class="px-3 py-2 bg-slate-800 text-white text-sm font-bold">預算收支平衡檢查</div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-xs sm:text-sm border-collapse">
+                <thead class="bg-slate-100 text-slate-700 border-b border-slate-200">
+                  <tr><th class="px-2.5 py-1.5 font-semibold text-left">項目</th>${info.map(i => `<th class="${th}">${i.c.label}</th>`).join('')}</tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200">
+                  <tr><td class="px-2.5 py-1.5">收入合計</td>${info.map(i => `<td class="${td} text-emerald-700">${money(i.c.inc)}</td>`).join('')}</tr>
+                  <tr><td class="px-2.5 py-1.5">支出合計</td>${info.map(i => `<td class="${td} text-rose-700">${money(i.c.exp)}</td>`).join('')}</tr>
+                  <tr class="font-semibold bg-slate-50"><td class="px-2.5 py-1.5">本期差額（收入－支出）</td>${info.map(i => `<td class="${td} ${i.diff < 0 ? 'text-rose-600' : 'text-slate-900'}">${money(i.diff)}</td>`).join('')}</tr>
+                  <tr><td class="px-2.5 py-1.5">期初結存金</td>${info.map(i => `<td class="${td} text-amber-700">${money(i.c.open)}</td>`).join('')}</tr>
+                  <tr class="font-semibold"><td class="px-2.5 py-1.5">期末預估結存（含期初）</td>${info.map(i => `<td class="${td} ${i.after < 0 ? 'text-rose-600' : 'text-slate-900'}">${money(i.after)}</td>`).join('')}</tr>
+                  <tr><td class="px-2.5 py-1.5">檢查結果</td>${info.map(i => `<td class="px-2 py-1.5 text-right"><span class="inline-block px-2 py-0.5 rounded-lg text-[11px] font-medium ${i.cls}">${i.badge}</span></td>`).join('')}</tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="px-3 py-2 border-t border-slate-200 text-xs ${over.length ? 'bg-rose-50 text-rose-800' : 'bg-emerald-50 text-emerald-800'}">
+              ${over.length ? `<div class="font-semibold mb-0.5">支出超出預算提醒（${over.length} 項）</div>` + over.map(o => `<div>• ${o}</div>`).join('') : '✔ 所有支出科目皆未超出本年度預算'}
+            </div>
+          </div>`;
+      }
+
+      let expChartHidden = {};
+      function niceMax(v) {
+        if (!(v > 0)) return 100;
+        const p = Math.pow(10, Math.floor(Math.log10(v)));
+        const n = v / p;
+        return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * p;
+      }
+
+      function renderExpDetailChart(items) {
+        const el = document.getElementById('expdetail-chart');
+        const legend = document.getElementById('expdetail-chart-legend');
+        if (!el) return;
+        const s = state.settings;
+        const titleEl = document.getElementById('expdetail-chart-title');
+        if (titleEl) titleEl.textContent = `支出科目對照折線圖（${s.baseYear}決算／${s.currentYear}預算／${s.currentYear}實際）`;
+        const series = [
+          { key: 'a25', label: `${s.baseYear}決算`, color: '#64748b', axis: 'L', dash: '' },
+          { key: 'b26', label: `${s.currentYear}預算`, color: '#2563eb', axis: 'L', dash: '' },
+          { key: 'a26', label: `${s.currentYear}實際`, color: '#e11d48', axis: 'L', dash: '' },
+          { key: 'rate', label: '執行率 %（右軸）', color: '#d97706', axis: 'R', dash: '5 4' }
+        ];
+        if (legend) {
+          legend.innerHTML = series.map(sr => {
+            const off = expChartHidden[sr.key];
+            return `<button type="button" data-chart-series="${sr.key}" class="px-2 py-0.5 rounded-full border text-[11px] font-medium ${off ? 'bg-white text-slate-400 border-slate-200' : 'bg-white text-slate-800 border-slate-300'}"><span class="inline-block w-2.5 h-2.5 rounded-full align-middle mr-1" style="background:${off ? '#cbd5e1' : sr.color}"></span>${sr.label}</button>`;
+          }).join('');
+        }
+        if (!items.length) {
+          el.innerHTML = '<div class="py-8 text-center text-slate-400 text-sm">沒有可顯示的支出科目</div>';
+          return;
+        }
+        const data = items.map(a => {
+          const a25 = Number(a.a2025Corr) || 0;
+          const b26 = Number(a.b2026) || 0;
+          const a26 = getActual2026ByAccountId(a.id);
+          return { name: a.name, a25, b26, a26, rate: b26 > 0 ? (a26 / b26) * 100 : null };
+        });
+        const n = data.length;
+        const padL = 64, padR = 52, padT = 16, padB = 100, H = 340;
+        const W = Math.max(640, padL + padR + n * 56);
+        const plotW = W - padL - padR, plotH = H - padT - padB;
+        const maxAmt = Math.max(1, ...data.flatMap(d => [d.a25, d.b26, d.a26]));
+        const lMax = niceMax(maxAmt);
+        const maxRate = Math.max(100, ...data.map(d => d.rate == null ? 0 : d.rate));
+        const rMax = niceMax(maxRate);
+        const xs = (i) => padL + (i + 0.5) * plotW / n;
+        const yL = (v) => padT + plotH - (v / lMax) * plotH;
+        const yR = (v) => padT + plotH - (v / rMax) * plotH;
+        let svg = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg" style="font-family:inherit;max-width:none">`;
+        for (let k = 0; k <= 5; k++) {
+          const y = padT + plotH - (k / 5) * plotH;
+          svg += `<line x1="${padL}" x2="${W - padR}" y1="${y}" y2="${y}" stroke="#e2e8f0" stroke-width="1"/>`;
+          svg += `<text x="${padL - 6}" y="${y + 4}" text-anchor="end" font-size="11" fill="#475569">${fmt(Math.round(lMax * k / 5))}</text>`;
+          svg += `<text x="${W - padR + 6}" y="${y + 4}" text-anchor="start" font-size="11" fill="#b45309">${Math.round(rMax * k / 5)}%</text>`;
+        }
+        svg += `<line x1="${padL}" x2="${padL}" y1="${padT}" y2="${padT + plotH}" stroke="#94a3b8"/>`;
+        svg += `<line x1="${W - padR}" x2="${W - padR}" y1="${padT}" y2="${padT + plotH}" stroke="#94a3b8"/>`;
+        data.forEach((d, i) => {
+          const x = xs(i), y = padT + plotH + 14;
+          svg += `<text x="${x}" y="${y}" text-anchor="end" font-size="11" fill="#334155" transform="rotate(-35 ${x} ${y})">${d.name}</text>`;
+        });
+        series.forEach(sr => {
+          if (expChartHidden[sr.key]) return;
+          const yf = sr.axis === 'L' ? yL : yR;
+          let path = '', pen = false;
+          data.forEach((d, i) => {
+            const v = d[sr.key];
+            if (v == null) { pen = false; return; }
+            path += (pen ? 'L' : 'M') + xs(i).toFixed(1) + ' ' + yf(v).toFixed(1) + ' ';
+            pen = true;
+          });
+          svg += `<path d="${path}" fill="none" stroke="${sr.color}" stroke-width="${sr.axis === 'R' ? 1.5 : 2.25}" ${sr.dash ? `stroke-dasharray="${sr.dash}"` : ''} stroke-linejoin="round"/>`;
+          data.forEach((d, i) => {
+            const v = d[sr.key];
+            if (v == null) return;
+            const txt = sr.axis === 'R' ? `${v.toFixed(1)}%` : '$' + fmt(v);
+            svg += `<circle cx="${xs(i).toFixed(1)}" cy="${yf(v).toFixed(1)}" r="${sr.axis === 'R' ? 2.5 : 3.5}" fill="${sr.color}" stroke="#fff" stroke-width="1"><title>${d.name}｜${sr.label}：${txt}</title></circle>`;
+          });
+        });
+        svg += `</svg>`;
+        el.innerHTML = svg;
+      }
+
       function applyReportLock() {
         document.querySelectorAll('#view-report .report-cell-input').forEach(inp => {
           inp.readOnly = reportLocked;
@@ -1924,6 +2081,7 @@
 
         buildSide(s.incomeCategories, 'income', document.getElementById('report-income-body'), document.getElementById('report-income-foot'));
         buildSide(s.expenseCategories, 'expense', document.getElementById('report-expense-body'), document.getElementById('report-expense-foot'));
+        renderBudgetCheck();
         applyReportLock();
       }
 
@@ -2731,6 +2889,7 @@
           });
         });
 
+        renderExpDetailChart(expItems);
         const totalDiff = totalBudget - totalActual;
         const totalRate = totalBudget > 0 ? ((totalActual / totalBudget) * 100).toFixed(1) + '%' : '—';
         document.getElementById('expdetail-foot').innerHTML = `
@@ -3070,6 +3229,7 @@
           `;
           renderKPIs();
           renderAccountsList();
+          renderBudgetCheck();
           applyReportLock();
         }
 
@@ -3136,6 +3296,13 @@
         });
         document.getElementById('btn-print-expdetail').addEventListener('click', () => window.print());
         document.getElementById('expdetail-cat-filter').addEventListener('change', renderExpDetailTable);
+        document.getElementById('expdetail-chart-legend').addEventListener('click', (e) => {
+          const b = e.target.closest('[data-chart-series]');
+          if (!b) return;
+          const k = b.dataset.chartSeries;
+          expChartHidden[k] = !expChartHidden[k];
+          renderExpDetailTable();
+        });
         document.getElementById('btn-rollover-report').addEventListener('click', promptYearRollover);
         document.getElementById('btn-rollover-year').addEventListener('click', promptYearRollover);
         document.getElementById('archived-years-list').addEventListener('click', (e) => {
