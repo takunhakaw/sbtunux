@@ -548,6 +548,7 @@
                   <th class="px-2 py-2 font-semibold text-right">收入</th>
                   <th class="px-2 py-2 font-semibold text-right">支出</th>
                   <th class="px-2 py-2 font-semibold text-right">結餘</th>
+                  <th class="px-1 py-2 no-print"></th>
                 </tr>
               </thead>
               <tbody id="events-summary-body" class="divide-y divide-slate-200"></tbody>
@@ -950,7 +951,8 @@
             </button>
           </form>
           <div class="mt-4 pt-3 border-t border-slate-200 space-y-2">
-            <div class="text-xs font-semibold text-slate-500">資料清除與重置</div>
+            <button id="btn-toggle-danger" type="button" class="w-full py-1.5 px-3 rounded-lg border border-slate-300 bg-slate-50 text-slate-600 text-xs font-medium hover:bg-slate-100">⚠️ 顯示「資料清除與重置」（危險操作）</button>
+            <div id="danger-zone-body" class="hidden space-y-2 pt-1">
             <button id="btn-clear-tx-only" type="button" class="w-full py-1.5 px-3 rounded-lg border border-amber-300 text-amber-800 text-xs font-medium hover:bg-amber-50 transition-colors">
               清除所有流水帳與封存紀錄
             </button>
@@ -960,6 +962,7 @@
             <button id="btn-reset-all" type="button" class="w-full py-1.5 px-3 rounded-lg border border-rose-300 text-rose-700 text-xs font-medium hover:bg-rose-50 transition-colors">
               恢復 Sbtunux 2025/2026 預設報表
             </button>
+            </div>
           </div>
         </div>
       </div>
@@ -2243,6 +2246,7 @@
             <td class="px-2 py-2.5 text-right tabular-nums text-emerald-700">${fmt(inc)}</td>
             <td class="px-2 py-2.5 text-right tabular-nums text-rose-700">${fmt(exp)}</td>
             <td class="px-2 py-2.5 text-right tabular-nums font-bold ${net >= 0 ? 'text-emerald-700' : 'text-rose-600'}">${net >= 0 ? '+' : ''}${fmt(net)}</td>
+            <td class="px-1 py-2.5 text-center no-print">${evName ? `<button type="button" data-del-event="${events.indexOf(evName)}" class="px-1.5 py-0.5 rounded text-[11px] text-rose-600 hover:bg-rose-100">刪除</button>` : ''}</td>
           `;
           tbody.appendChild(tr);
         });
@@ -3043,6 +3047,12 @@
 
       function switchTab(tabName) {
         state.activeTab = tabName;
+        const dzBody = document.getElementById('danger-zone-body');
+        if (dzBody) {
+          dzBody.classList.add('hidden');
+          const dzBtn = document.getElementById('btn-toggle-danger');
+          if (dzBtn) dzBtn.textContent = '⚠️ 顯示「資料清除與重置」（危險操作）';
+        }
         document.querySelectorAll('.tab-view').forEach(v => v.classList.add('hidden'));
         document.getElementById('view-' + tabName).classList.remove('hidden');
 
@@ -3634,6 +3644,24 @@
         document.getElementById('btn-print-events').addEventListener('click', () => window.print());
 
         document.getElementById('events-summary-body').addEventListener('click', (e) => {
+          const delBtn = e.target.closest('button[data-del-event]');
+          if (delBtn) {
+            const name = (state.settings.events || [])[Number(delBtn.dataset.delEvent)];
+            if (name === undefined) return;
+            const n = state.transactions.filter(t => (t.eventName || '') === name).length;
+            openConfirm('刪除活動', n > 0
+              ? `確定要刪除活動「${name}」嗎？該活動底下的 ${n} 筆收支傳票不會被刪除，但會改歸為「一般會務（未指定活動）」。`
+              : `確定要刪除活動「${name}」嗎？`, () => {
+              state.settings.events = state.settings.events.filter(x => x !== name);
+              state.transactions.forEach(t => { if ((t.eventName || '') === name) t.eventName = ''; });
+              if (selectedEventForDetail === name) selectedEventForDetail = null;
+              saveState();
+              populateEventControls();
+              renderAll();
+              showToast(`已刪除活動「${name}」`);
+            });
+            return;
+          }
           const tr = e.target.closest('tr[data-view-event]');
           if (!tr) return;
           selectedEventForDetail = tr.dataset.viewEvent;
@@ -3774,6 +3802,12 @@
               showToast(`已刪除科目「${acc.name}」`);
             });
           }
+        });
+
+        document.getElementById('btn-toggle-danger').addEventListener('click', () => {
+          const body = document.getElementById('danger-zone-body');
+          const nowHidden = body.classList.toggle('hidden');
+          document.getElementById('btn-toggle-danger').textContent = nowHidden ? '⚠️ 顯示「資料清除與重置」（危險操作）' : '收起「資料清除與重置」';
         });
 
         // Clear transactions & archives only
