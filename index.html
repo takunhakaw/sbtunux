@@ -71,8 +71,7 @@
       input:not([type=checkbox]):not([type=radio]):not([type=file]), select, textarea { font-size: 16px !important; }
       button, select { min-height: 36px; }
       .overflow-x-auto { -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
-      .overflow-x-auto > table { min-width: 560px; }
-      .rpt-cat { display: none; }
+      .overflow-x-auto > table { min-width: 640px; }
       .report-cell-input { width: 5.75rem !important; }
       /* journal entry form -> bottom sheet */
       #tx-sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 55; max-height: 90dvh; overflow-y: auto;
@@ -220,6 +219,7 @@
             <p id="report-main-subtitle" class="text-xs sm:text-sm text-slate-500 mt-0.5">可直接點擊表格中的數字欄位進行登打，系統會即時自動加總各分類合計、總計與結存金（亦可搭配「收支流水帳」逐筆登錄）。</p>
           </div>
           <div class="flex flex-wrap items-center gap-2 no-print">
+            <button id="btn-toggle-report-lock" type="button" class="px-3 py-1.5 rounded-lg bg-slate-200 text-slate-800 text-xs sm:text-sm font-semibold hover:bg-slate-300 transition-colors">🔒 已鎖定（點此修改）</button>
             <button id="btn-export-report-csv" class="px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-700 text-xs sm:text-sm font-medium hover:bg-slate-50 transition-colors">
               匯出報表 CSV
             </button>
@@ -1297,6 +1297,7 @@
 
       let pendingModalAction = null;
       let selectedEventForDetail = null;
+      let reportLocked = true;
 
       function loadState() {
         try {
@@ -1527,6 +1528,25 @@
         }
         if (!options.skipAutoSync) {
           scheduleAutoCloudSync();
+        }
+      }
+
+      function applyReportLock() {
+        document.querySelectorAll('#view-report .report-cell-input').forEach(inp => {
+          inp.readOnly = reportLocked;
+          inp.style.background = reportLocked ? '' : '#f8fafc';
+          inp.style.borderColor = reportLocked ? '' : '#cbd5e1';
+          inp.style.cursor = reportLocked ? 'default' : '';
+        });
+        document.querySelectorAll('#view-report .carry-input').forEach(inp => {
+          inp.readOnly = reportLocked;
+          inp.style.cursor = reportLocked ? 'default' : '';
+        });
+        const btn = document.getElementById('btn-toggle-report-lock');
+        if (btn) {
+          btn.textContent = reportLocked ? '🔒 已鎖定（點此修改）' : '✏️ 修改中（完成請點此鎖定）';
+          btn.className = 'px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-colors ' +
+            (reportLocked ? 'bg-slate-200 text-slate-800 hover:bg-slate-300' : 'bg-amber-500 text-white hover:bg-amber-600');
         }
       }
 
@@ -1808,19 +1828,19 @@
               tr.className = 'hover:bg-slate-50';
               const cellCls = 'w-20 sm:w-24 text-right tabular-nums bg-transparent border border-transparent hover:border-slate-300 focus:border-emerald-500 focus:bg-white rounded px-1.5 py-0.5 outline-none transition-colors';
               tr.innerHTML = `
-                ${idx === 0 ? `<td rowspan="${items.length + 1}" class="rpt-cat px-2.5 py-2 font-semibold text-slate-700 bg-slate-50/80 border-r border-slate-200 align-middle text-center w-20">${cat}</td>` : ''}
-                <td class="sticky-col px-2.5 py-1 text-slate-800 whitespace-nowrap">${idx === 0 ? `<span class="md:hidden block text-[10px] leading-none text-slate-400 mb-0.5">${cat}</span>` : ''}${item.name}</td>
+                ${idx === 0 ? `<td rowspan="${items.length + 1}" class="rpt-cat px-1.5 sm:px-2.5 py-2 text-[11px] sm:text-sm font-semibold text-slate-700 bg-slate-50/80 border-r border-slate-200 align-middle text-center w-20">${cat}</td>` : ''}
+                <td class="sticky-col px-2.5 py-1 text-slate-800 whitespace-nowrap">${item.name}</td>
                 <td class="px-1 py-1 text-right">
-                  <input type="number" min="0" step="1" data-acc-id="${item.id}" data-field="b2025" data-cat="${cat}" data-type="${type}" value="${Number(item.b2025) || 0}" class="report-cell-input ${cellCls} text-slate-600" />
+                  <input type="number" min="0" step="1" data-acc-id="${item.id}" data-field="b2025" data-cat="${cat}" data-type="${type}" value="${Number(item.b2025) || ''}" placeholder="0" class="report-cell-input ${cellCls} text-slate-600" />
                 </td>
                 <td class="px-1 py-1 text-right">
-                  <input type="number" min="0" step="1" data-acc-id="${item.id}" data-field="a2025" data-cat="${cat}" data-type="${type}" value="${a25}" title="${isCorrected ? '原印：' + fmt(item.a2025Orig) : ''}" class="report-cell-input ${cellCls} ${isCorrected ? 'text-rose-600 font-semibold' : 'text-slate-700'}" />
+                  <input type="number" min="0" step="1" data-acc-id="${item.id}" data-field="a2025" data-cat="${cat}" data-type="${type}" value="${a25 || ''}" placeholder="0" title="${isCorrected ? '原印：' + fmt(item.a2025Orig) : ''}" class="report-cell-input ${cellCls} ${isCorrected ? 'text-rose-600 font-semibold' : 'text-slate-700'}" />
                 </td>
                 <td class="px-1 py-1 text-right">
-                  <input type="number" min="0" step="1" data-acc-id="${item.id}" data-field="b2026" data-cat="${cat}" data-type="${type}" value="${b26}" class="report-cell-input ${cellCls} text-slate-800" />
+                  <input type="number" min="0" step="1" data-acc-id="${item.id}" data-field="b2026" data-cat="${cat}" data-type="${type}" value="${b26 || ''}" placeholder="0" class="report-cell-input ${cellCls} text-slate-800" />
                 </td>
                 <td class="px-1 py-1 text-right">
-                  <input type="number" min="0" step="1" data-acc-id="${item.id}" data-field="a2026" data-cat="${cat}" data-type="${type}" value="${a26}" class="report-cell-input ${cellCls} font-medium ${a26 > 0 ? 'text-emerald-700' : 'text-slate-400'}" />
+                  <input type="number" min="0" step="1" data-acc-id="${item.id}" data-field="a2026" data-cat="${cat}" data-type="${type}" value="${a26 || ''}" placeholder="0" class="report-cell-input ${cellCls} font-medium ${a26 > 0 ? 'text-emerald-700' : 'text-slate-400'}" />
                 </td>
                 <td data-rate-id="${item.id}" class="px-2 py-1 text-right tabular-nums text-xs text-slate-500 no-print">${rate}</td>
               `;
@@ -1857,9 +1877,9 @@
               <tr class="bg-white font-medium text-slate-700 border-t border-slate-200">
                 <td colspan="2" class="px-2.5 py-1.5">上年度結存金</td>
                 <td class="px-2 py-1.5 text-right tabular-nums">${fmt(totals.prev2025Carry)}</td>
-                <td class="px-2 py-1.5 text-right tabular-nums">${fmt(totals.prev2025Carry)}</td>
+                <td class="px-1 py-1 text-right"><input type="number" step="1" data-carry="base" value="${totals.prev2025Carry || ''}" placeholder="0" title="基準年度之上期結存金（可調整）" class="carry-input w-20 sm:w-24 text-right tabular-nums border border-amber-300 bg-amber-50 rounded px-1.5 py-0.5 outline-none focus:border-emerald-500" /></td>
                 <td class="px-2 py-1.5 text-right tabular-nums text-slate-400">—</td>
-                <td class="px-2 py-1.5 text-right tabular-nums text-amber-700">${fmt(totals.carry2026)}</td>
+                <td class="px-1 py-1 text-right"><input type="number" step="1" data-carry="curr" value="${totals.carry2026 || ''}" placeholder="0" title="本年度期初結存金（調整後改為手動指定）" class="carry-input w-20 sm:w-24 text-right tabular-nums text-amber-700 font-semibold border border-amber-300 bg-amber-50 rounded px-1.5 py-0.5 outline-none focus:border-emerald-500" /></td>
                 <td class="px-2 py-1.5 text-right text-xs text-slate-400 no-print">—</td>
               </tr>
               <tr class="bg-emerald-100/80 text-emerald-950 font-bold border-t border-emerald-300">
@@ -1904,6 +1924,7 @@
 
         buildSide(s.incomeCategories, 'income', document.getElementById('report-income-body'), document.getElementById('report-income-foot'));
         buildSide(s.expenseCategories, 'expense', document.getElementById('report-expense-body'), document.getElementById('report-expense-foot'));
+        applyReportLock();
       }
 
       function populateEventControls() {
@@ -3006,9 +3027,9 @@
               <tr class="bg-white font-medium text-slate-700 border-t border-slate-200">
                 <td colspan="2" class="px-2.5 py-1.5">上年度結存金</td>
                 <td class="px-2 py-1.5 text-right tabular-nums">${fmt(totals.prev2025Carry)}</td>
-                <td class="px-2 py-1.5 text-right tabular-nums">${fmt(totals.prev2025Carry)}</td>
+                <td class="px-1 py-1 text-right"><input type="number" step="1" data-carry="base" value="${totals.prev2025Carry || ''}" placeholder="0" title="基準年度之上期結存金（可調整）" class="carry-input w-20 sm:w-24 text-right tabular-nums border border-amber-300 bg-amber-50 rounded px-1.5 py-0.5 outline-none focus:border-emerald-500" /></td>
                 <td class="px-2 py-1.5 text-right tabular-nums text-slate-400">—</td>
-                <td class="px-2 py-1.5 text-right tabular-nums text-amber-700">${fmt(totals.carry2026)}</td>
+                <td class="px-1 py-1 text-right"><input type="number" step="1" data-carry="curr" value="${totals.carry2026 || ''}" placeholder="0" title="本年度期初結存金（調整後改為手動指定）" class="carry-input w-20 sm:w-24 text-right tabular-nums text-amber-700 font-semibold border border-amber-300 bg-amber-50 rounded px-1.5 py-0.5 outline-none focus:border-emerald-500" /></td>
                 <td class="px-2 py-1.5 text-right text-xs text-slate-400 no-print">—</td>
               </tr>
               <tr class="bg-emerald-100/80 text-emerald-950 font-bold border-t border-emerald-300">
@@ -3049,12 +3070,13 @@
           `;
           renderKPIs();
           renderAccountsList();
+          applyReportLock();
         }
 
         ['report-income-body', 'report-expense-body'].forEach(bodyId => {
           document.getElementById(bodyId).addEventListener('input', (e) => {
             const inp = e.target.closest('.report-cell-input');
-            if (!inp) return;
+            if (!inp || reportLocked) return;
             const accId = inp.dataset.accId;
             const field = inp.dataset.field;
             const val = Number(inp.value) || 0;
@@ -3082,6 +3104,36 @@
 
         // Print & Export Report CSV
         document.getElementById('btn-print-report').addEventListener('click', () => window.print());
+        document.getElementById('btn-toggle-report-lock').addEventListener('click', () => {
+          reportLocked = !reportLocked;
+          applyReportLock();
+          showToast(reportLocked ? '預算表已鎖定' : '已解除鎖定，可開始修改');
+        });
+        const reportView = document.getElementById('view-report');
+        reportView.addEventListener('click', (e) => {
+          if (reportLocked && e.target.matches('.report-cell-input, .carry-input')) {
+            showToast('預算表已鎖定，請先按右上角「修改」解鎖');
+          }
+        });
+        reportView.addEventListener('focusin', (e) => {
+          if (!reportLocked && e.target.matches('.report-cell-input, .carry-input')) e.target.select();
+        });
+        document.getElementById('report-income-foot').addEventListener('change', (e) => {
+          const inp = e.target.closest('.carry-input');
+          if (!inp || reportLocked) return;
+          const val = Number(inp.value) || 0;
+          if (inp.dataset.carry === 'base') {
+            state.settings.basePrevCarryover = val;
+            showToast('已更新基準年度之上期結存金');
+          } else {
+            state.settings.carryoverMode = 'manual';
+            state.settings.manualCarryover = val;
+            showToast('已調整本年度期初結存金（改為手動指定，可於系統設定改回自動）');
+          }
+          saveState();
+          populateSettingsForm();
+          renderAll();
+        });
         document.getElementById('btn-print-expdetail').addEventListener('click', () => window.print());
         document.getElementById('expdetail-cat-filter').addEventListener('change', renderExpDetailTable);
         document.getElementById('btn-rollover-report').addEventListener('click', promptYearRollover);
