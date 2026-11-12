@@ -180,6 +180,7 @@
             系統設定
           </button>
         </nav>
+        <button id="btn-logout" type="button" class="ml-auto md:ml-0 px-2.5 py-1 rounded-lg border border-slate-600 text-slate-300 text-xs font-medium hover:bg-slate-800 whitespace-nowrap">登出</button>
       </div>
     </div>
   </header>
@@ -350,6 +351,14 @@
                 <span id="tx-church-rate-hint" class="text-[11px] font-medium text-emerald-700"></span>
               </div>
               <div id="tx-church-pills" class="flex flex-wrap gap-1.5"></div>
+              <div id="tx-church-multi-tools" class="hidden">
+                <div class="flex flex-wrap items-center gap-1.5 text-[11px]">
+                  <button id="btn-church-select-unpaid" type="button" class="px-2 py-0.5 rounded border border-emerald-300 bg-white text-emerald-800 hover:bg-emerald-100">選取全部未繳</button>
+                  <button id="btn-church-select-all" type="button" class="px-2 py-0.5 rounded border border-emerald-300 bg-white text-emerald-800 hover:bg-emerald-100">全選</button>
+                  <button id="btn-church-clear" type="button" class="px-2 py-0.5 rounded border border-slate-300 bg-white text-slate-600 hover:bg-slate-100">清除</button>
+                  <span class="text-emerald-800">可多選，送出時每間教會各產生一筆傳票（✓＝已有繳費紀錄）</span>
+                </div>
+              </div>
               <div id="tx-headcount-wrap" class="hidden pt-1.5 border-t border-emerald-200/70 flex items-center gap-2">
                 <label for="tx-headcount" class="text-xs font-medium text-emerald-900 whitespace-nowrap">報名人數：</label>
                 <input id="tx-headcount" type="number" min="1" step="1" value="1" class="w-20 rounded-lg border border-emerald-300 bg-white px-2.5 py-1 text-sm font-semibold tabular-nums text-slate-900 focus:ring-2 focus:ring-emerald-500 outline-none" />
@@ -584,6 +593,10 @@
             <div class="flex flex-wrap items-center justify-between gap-2">
               <div class="text-xs sm:text-sm font-bold text-emerald-950">各教會活動分擔金 & 活動報名費（出席人數登記）</div>
               <div id="ev-church-rate-hint" class="text-[11px] font-medium text-emerald-800"></div>
+              <div class="flex items-center gap-1.5">
+                <button id="btn-ev-share-selall" type="button" class="px-2 py-0.5 rounded border border-emerald-300 bg-white text-[11px] text-emerald-800 hover:bg-emerald-100">全選未繳分擔金</button>
+                <button id="btn-ev-share-batch" type="button" class="px-2 py-0.5 rounded bg-emerald-600 text-white text-[11px] hover:bg-emerald-700">批次登記分擔金（0）</button>
+              </div>
             </div>
             <div class="overflow-x-auto bg-white border border-emerald-200 rounded-lg max-h-64 overflow-y-auto">
               <table class="w-full text-xs text-left border-collapse">
@@ -1070,32 +1083,6 @@
         </div>
       </div>
 
-      <!-- Google Apps Script Cloud Backend -->
-      <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm space-y-3">
-        <div class="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <h3 class="text-base font-bold text-slate-900">Google 試算表雲端後台連線（Apps Script）</h3>
-            <p class="text-xs text-slate-500 mt-0.5">貼上部署完成的 Apps Script 網頁應用程式網址（Web App URL），即可將所有設定、科目與流水帳直接讀寫至 Google 試算表。</p>
-          </div>
-          <div class="flex items-center gap-2">
-            <span id="cloud-sync-status" class="text-xs text-slate-400">尚未設定網址</span>
-            <button id="btn-logout" type="button" class="px-2.5 py-1 rounded-lg border border-slate-300 bg-white text-slate-700 text-xs font-medium hover:bg-slate-50 whitespace-nowrap">登出（清除密碼）</button>
-          </div>
-        </div>
-        <div class="flex flex-col sm:flex-row gap-2">
-          <input id="setting-gas-url" type="url" placeholder="https://script.google.com/macros/s/AKfycbzEaxKumpTwKKd1e7FZJ4jK7X7LUUaJut0xzXt07Jjc_n7W1_mhdLLh5nCnwFJGop-SrA/exec" class="flex-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" />
-          <button id="btn-save-gas-url" type="button" class="px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-700 text-xs sm:text-sm font-medium hover:bg-slate-50 whitespace-nowrap">
-            儲存網址
-          </button>
-          <button id="btn-cloud-push" type="button" class="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs sm:text-sm font-medium hover:bg-emerald-700 whitespace-nowrap">
-            上傳儲存至試算表
-          </button>
-          <button id="btn-cloud-pull" type="button" class="px-3 py-1.5 rounded-lg bg-slate-800 text-white text-xs sm:text-sm font-medium hover:bg-slate-700 whitespace-nowrap">
-            從試算表載入
-          </button>
-        </div>
-      </div>
-
       <!-- Archived Years -->
       <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm space-y-3">
         <div>
@@ -1246,7 +1233,7 @@
         wallets: ['現金', '郵局'],
         incomeCategories: ['經常費收入', '專帳收入'],
         expenseCategories: ['典禮培靈費', '事工費', '事務費', '其他'],
-        events: ['2026 事工研討會'],
+        events: [],
         churches: ['高遶', '角板', '奎輝', '光輝', '溪口', '羅浮', '烏內', '義興', '可愛', '三民'],
         feeRates: {
           annualFee: 8000,
@@ -1316,6 +1303,8 @@
       let pendingModalAction = null;
       let selectedEventForDetail = null;
       let reportLocked = true;
+      let txChurchSel = new Set();
+      let txChurchSelAcc = '';
 
       function loadState() {
         try {
@@ -1547,6 +1536,37 @@
         if (!options.skipAutoSync) {
           scheduleAutoCloudSync();
         }
+      }
+
+      function isMultiChurchAccount(acc) {
+        return Boolean(acc && acc.type === 'income' && (acc.name === '年度負擔金' || acc.name === '活動分擔金'));
+      }
+
+      function isChurchPaid(ch, acc) {
+        if (!acc) return false;
+        const evSel = (document.getElementById('tx-event') || {}).value || '';
+        return state.transactions.some(t => t.accountId === acc.id &&
+          ((t.party || '').trim() === ch || (t.memo || '').includes(ch)) &&
+          (acc.name !== '活動分擔金' || !evSel || (t.eventName || '') === evSel));
+      }
+
+      function syncMultiChurchFields(acc) {
+        const arr = Array.from(txChurchSel);
+        const rate = getCurrentRateForAccount(acc);
+        document.getElementById('tx-party').value = arr.length === 1 ? arr[0] : '';
+        updateTxChurchSelectorVisibility();
+        if (arr.length === 1) {
+          applyChurchFeeAmount(true);
+        } else {
+          document.getElementById('tx-memo').value = '';
+          if (arr.length > 1 && rate > 0) document.getElementById('tx-amount').value = rate;
+        }
+      }
+
+      function updateEvShareBatchCount() {
+        const n = document.querySelectorAll('input[data-ev-share-cb]:checked').length;
+        const b = document.getElementById('btn-ev-share-batch');
+        if (b) b.textContent = `批次登記分擔金（${n}）`;
       }
 
       function renderBudgetCheck() {
@@ -2168,7 +2188,7 @@
             <td class="px-2.5 py-1.5 text-right whitespace-nowrap tabular-nums">
               ${shareSum > 0
                 ? `<span class="text-emerald-700 font-semibold">$${fmt(shareSum)}</span>`
-                : `<button type="button" data-ev-share="${ch}" class="px-2 py-0.5 rounded bg-emerald-600 text-white text-[11px] hover:bg-emerald-700">＋$${fmt(shareFee)}分擔金</button>`}
+                : `<span class="inline-flex items-center gap-1.5"><input type="checkbox" data-ev-share-cb="${ch}" class="rounded text-emerald-600" title="勾選後可批次登記" /><button type="button" data-ev-share="${ch}" class="px-2 py-0.5 rounded bg-emerald-600 text-white text-[11px] hover:bg-emerald-700">＋$${fmt(shareFee)}分擔金</button></span>`}
             </td>
             <td class="px-2.5 py-1.5 text-right whitespace-nowrap tabular-nums">
               ${regSum > 0
@@ -2185,6 +2205,7 @@
           `;
           tbody.appendChild(tr);
         });
+        updateEvShareBatchCount();
       }
 
       function renderEventsView() {
@@ -2204,7 +2225,7 @@
           const label = evName || '一般會務（未指定活動）';
           if (q && !label.toLowerCase().includes(q)) return;
           const txs = state.transactions.filter(t => (t.eventName || '') === evName);
-          if (evName === '' && txs.length === 0 && events.length > 0) return;
+          if (evName === '' && txs.length === 0) return;
 
           const inc = txs.filter(t => t.type === 'income').reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
           const exp = txs.filter(t => t.type === 'expense').reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
@@ -2485,7 +2506,12 @@
 
         const rate = getCurrentRateForAccount(acc);
         const isReg = acc && acc.name === '活動報名費';
-        if (hintEl) hintEl.textContent = isReg ? `現行標準：$${fmt(rate)}／人` : `現行標準：$${fmt(rate)}／間`;
+        const multi = isMultiChurchAccount(acc) && !document.getElementById('tx-edit-id').value;
+        if (acc && txChurchSelAcc !== acc.id) { txChurchSel.clear(); txChurchSelAcc = acc.id; }
+        const selN = txChurchSel.size;
+        if (hintEl) hintEl.textContent = isReg ? `現行標準：$${fmt(rate)}／人` : (multi && selN > 0 ? `現行標準：$${fmt(rate)}／間｜已選 ${selN} 間 ＝ $${fmt(rate * selN)}` : `現行標準：$${fmt(rate)}／間`);
+        const toolsEl = document.getElementById('tx-church-multi-tools');
+        if (toolsEl) toolsEl.classList.toggle('hidden', !multi);
         if (hcWrap) hcWrap.classList.toggle('hidden', !isReg);
         if (isReg) {
           const hc = Math.max(1, Number(document.getElementById('tx-headcount')?.value) || 1);
@@ -2496,13 +2522,15 @@
         const currentParty = (document.getElementById('tx-party').value || '').trim();
         pillsWrap.innerHTML = '';
         (state.settings.churches || []).forEach(ch => {
-          const active = currentParty === ch;
+          const active = multi ? txChurchSel.has(ch) : currentParty === ch;
+          const paid = multi && isChurchPaid(ch, acc);
           const btn = document.createElement('button');
           btn.type = 'button';
           btn.dataset.churchName = ch;
           btn.className = 'tx-church-pill px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors ' +
             (active ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-emerald-900 border-emerald-200 hover:bg-emerald-100');
-          btn.textContent = ch;
+          btn.textContent = (paid ? '✓ ' : '') + ch;
+          if (paid) btn.title = '此項目已有繳費紀錄';
           pillsWrap.appendChild(btn);
         });
       }
@@ -3410,6 +3438,43 @@
             return;
           }
           const editId = document.getElementById('tx-edit-id').value;
+          const accSel = state.accounts.find(a => a.id === document.getElementById('tx-account').value);
+          if (!editId && isMultiChurchAccount(accSel) && txChurchSel.size > 0) {
+            const perAmt = Number(document.getElementById('tx-amount').value) || getCurrentRateForAccount(accSel);
+            if (perAmt <= 0) { showToast('請輸入每間教會的金額'); return; }
+            const evName = document.getElementById('tx-event').value;
+            const date = document.getElementById('tx-date').value;
+            const wallet = document.getElementById('tx-wallet').value;
+            const note = document.getElementById('tx-note').value.trim() || '批次登錄';
+            const list = Array.from(txChurchSel);
+            const firstVoucher = document.getElementById('tx-voucher').value.trim();
+            list.forEach((ch, i) => {
+              state.transactions.push({
+                id: 'tx-' + Date.now() + '-' + i,
+                date,
+                voucher: (i === 0 && firstVoucher) ? firstVoucher : suggestNextVoucher(),
+                type: 'income',
+                wallet,
+                accountId: accSel.id,
+                eventName: evName,
+                amount: perAmt,
+                party: ch,
+                memo: evName && accSel.name === '活動分擔金' ? `${evName} - ${ch} 活動分擔金` : `${ch} - ${accSel.name}`,
+                note
+              });
+            });
+            txChurchSel.clear();
+            document.getElementById('tx-form').reset();
+            document.getElementById('tx-edit-id').value = '';
+            document.getElementById('tx-date').value = `${state.settings.currentYear}-11-12`;
+            document.getElementById('tx-voucher').value = suggestNextVoucher();
+            setTxTypeUI('expense');
+            setTxWalletUI(state.settings.wallets[0] || '現金');
+            saveState();
+            renderAll();
+            showToast(`已批次登錄 ${list.length} 間教會「${accSel.name}」，共 $${fmt(perAmt * list.length)}`);
+            return;
+          }
           const payload = {
             id: editId || ('tx-' + Date.now()),
             date: document.getElementById('tx-date').value,
@@ -3768,101 +3833,13 @@
           });
         });
 
-        // Google Apps Script Cloud Sync
-        document.getElementById('btn-save-gas-url').addEventListener('click', () => {
-          const url = document.getElementById('setting-gas-url').value.trim();
-          state.settings.gasUrl = url;
-          saveState({ skipAutoSync: true });
-          document.getElementById('cloud-sync-status').textContent = url ? '已儲存後台網址（編輯後 10 秒自動同步）' : '尚未設定網址';
-          showToast(url ? '已儲存 Apps Script 網址' : '已清除 Apps Script 網址');
-        });
-
+        // 雲端同步（設定介面已隱藏，僅保留記帳頁的快速同步按鈕）
         document.getElementById('btn-quick-cloud-sync').addEventListener('click', () => {
-          if (!state.settings.gasUrl) {
-            switchTab('accounts');
-            showToast('請先於系統設定貼上 Apps Script 網址');
+          if (!(state.settings.gasUrl || '').trim()) {
+            showToast('尚未設定雲端後台');
             return;
           }
           syncToCloud({ silent: false });
-        });
-
-        document.getElementById('btn-cloud-push').addEventListener('click', async () => {
-          const url = document.getElementById('setting-gas-url').value.trim();
-          if (!url) {
-            showToast('請先輸入 Apps Script 網頁應用程式網址');
-            return;
-          }
-          state.settings.gasUrl = url;
-          saveState({ skipAutoSync: true });
-          if (!adminPwd) {
-            showLogin('請先輸入後台存取密碼');
-            return;
-          }
-          await syncToCloud({ silent: false });
-        });
-
-        document.getElementById('btn-cloud-pull').addEventListener('click', async () => {
-          const url = document.getElementById('setting-gas-url').value.trim();
-          if (!url) {
-            showToast('請先輸入 Apps Script 網頁應用程式網址');
-            return;
-          }
-          state.settings.gasUrl = url;
-          saveState({ skipAutoSync: true });
-          const statusEl = document.getElementById('cloud-sync-status');
-          statusEl.textContent = '從試算表載入中...';
-          try {
-            if (!adminPwd) {
-              statusEl.textContent = '尚未登入';
-              showLogin('請先輸入後台存取密碼');
-              return;
-            }
-            const res = await fetch(cloudGetUrl(url));
-            const json = await res.json();
-            if (json && json.authError) {
-              setAdminPwd('');
-              statusEl.textContent = '密碼驗證失敗';
-              showLogin(json.error || '密碼錯誤，請重新登入');
-              return;
-            }
-            if (json && json.ok && json.data) {
-              if (!json.data.hasData) {
-                statusEl.textContent = '試算表尚無資料';
-                showToast('試算表目前為空，可先點擊「上傳儲存至試算表」建立初始資料');
-                return;
-              }
-              if (json.data.settings) {
-                state.settings = Object.assign({}, JSON.parse(JSON.stringify(DEFAULT_SETTINGS)), json.data.settings, { gasUrl: url });
-              }
-              if (Array.isArray(json.data.accounts) && json.data.accounts.length > 0) {
-                state.accounts = json.data.accounts;
-              }
-              if (Array.isArray(json.data.transactions)) {
-                state.transactions = json.data.transactions;
-              }
-              if (Array.isArray(json.data.meetings)) {
-                state.meetings = json.data.meetings;
-              }
-              if (Array.isArray(json.data.archivedYears)) {
-                state.archivedYears = json.data.archivedYears;
-              }
-              saveState({ skipAutoSync: true });
-              populateWalletControls();
-              populateAccountDropdown();
-              populateCategoryDropdown();
-              populateExpDetailCatFilter();
-              populateSettingsForm();
-              renderAll();
-              statusEl.textContent = '已從試算表載入';
-              showToast('已成功從 Google 試算表載入最新資料');
-            } else {
-              statusEl.textContent = '載入失敗';
-              showToast('載入失敗：' + ((json && json.error) || '未知錯誤'));
-            }
-          } catch (err) {
-            statusEl.textContent = '連線失敗';
-            showToast('無法連線至 Apps Script，請確認部署網址與權限');
-          }
         });
 
         // Meeting attendance & fee handlers
@@ -4220,11 +4197,39 @@
           const btn = e.target.closest('.tx-church-pill');
           if (!btn) return;
           const ch = btn.dataset.churchName;
+          const accNow = state.accounts.find(a => a.id === document.getElementById('tx-account').value);
+          if (isMultiChurchAccount(accNow) && !document.getElementById('tx-edit-id').value) {
+            if (txChurchSel.has(ch)) txChurchSel.delete(ch); else txChurchSel.add(ch);
+            syncMultiChurchFields(accNow);
+            return;
+          }
           document.getElementById('tx-party').value = ch;
           updateTxChurchSelectorVisibility();
           applyChurchFeeAmount(true);
         });
 
+        function currentAccForChurchTools() {
+          return state.accounts.find(a => a.id === document.getElementById('tx-account').value);
+        }
+        document.getElementById('btn-church-select-unpaid').addEventListener('click', () => {
+          const acc = currentAccForChurchTools();
+          if (!isMultiChurchAccount(acc)) return;
+          txChurchSel.clear();
+          (state.settings.churches || []).forEach(ch => { if (!isChurchPaid(ch, acc)) txChurchSel.add(ch); });
+          syncMultiChurchFields(acc);
+        });
+        document.getElementById('btn-church-select-all').addEventListener('click', () => {
+          const acc = currentAccForChurchTools();
+          if (!isMultiChurchAccount(acc)) return;
+          (state.settings.churches || []).forEach(ch => txChurchSel.add(ch));
+          syncMultiChurchFields(acc);
+        });
+        document.getElementById('btn-church-clear').addEventListener('click', () => {
+          const acc = currentAccForChurchTools();
+          txChurchSel.clear();
+          if (acc) syncMultiChurchFields(acc);
+        });
+        document.getElementById('tx-event').addEventListener('change', updateTxChurchSelectorVisibility);
         document.getElementById('tx-headcount').addEventListener('input', () => {
           applyChurchFeeAmount(true);
         });
@@ -4314,6 +4319,42 @@
           showToast(`已登錄「${acc ? acc.name : ''}」$${fmt(amount)} 至活動`);
         });
 
+        document.getElementById('event-church-fees-body').addEventListener('change', (e) => {
+          if (e.target.matches('input[data-ev-share-cb]')) updateEvShareBatchCount();
+        });
+        document.getElementById('btn-ev-share-selall').addEventListener('click', () => {
+          document.querySelectorAll('input[data-ev-share-cb]').forEach(cb => { cb.checked = true; });
+          updateEvShareBatchCount();
+        });
+        document.getElementById('btn-ev-share-batch').addEventListener('click', () => {
+          const cbs = Array.from(document.querySelectorAll('input[data-ev-share-cb]:checked'));
+          if (!selectedEventForDetail) return;
+          if (cbs.length === 0) { showToast('請先勾選要登記分擔金的教會'); return; }
+          const shareAcc = state.accounts.find(a => a.type === 'income' && a.name === '活動分擔金');
+          if (!shareAcc) { showToast('找不到「活動分擔金」科目'); return; }
+          const r = state.settings.feeRates || DEFAULT_SETTINGS.feeRates;
+          const amt = Number(r.eventShareFee) || 1000;
+          const wallet = state.settings.wallets[0] || '現金';
+          cbs.forEach((cb, i) => {
+            const ch = cb.dataset.evShareCb;
+            state.transactions.push({
+              id: 'tx-' + Date.now() + '-' + i,
+              date: `${state.settings.currentYear}-11-12`,
+              voucher: suggestNextVoucher(),
+              type: 'income',
+              wallet,
+              accountId: shareAcc.id,
+              eventName: selectedEventForDetail,
+              amount: amt,
+              party: ch,
+              memo: `${selectedEventForDetail} - ${ch} 活動分擔金`,
+              note: '活動收支批次登記'
+            });
+          });
+          saveState();
+          renderAll();
+          showToast(`已批次登記 ${cbs.length} 間教會活動分擔金，共 $${fmt(amt * cbs.length)}`);
+        });
         document.getElementById('event-church-fees-body').addEventListener('click', (e) => {
           const shareBtn = e.target.closest('button[data-ev-share]');
           const regBtn = e.target.closest('button[data-ev-reg]');
