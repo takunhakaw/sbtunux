@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <style>
+<style>
     body {
       font-family: 'Inter', 'Noto Sans TC', system-ui, -apple-system, sans-serif;
     }
@@ -92,10 +92,52 @@
       #bottom-nav, #more-sheet, #btn-mobile-fab { display: none !important; }
     }
     @media print { #bottom-nav, #more-sheet, #btn-mobile-fab, #tx-sheet-backdrop { display: none !important; } }
+
+    /* ===== 登入畫面遮罩樣式 ===== */
+    #login-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: #0f172a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      transition: opacity 0.3s ease;
+    }
+
+    #login-overlay.hidden {
+      opacity: 0;
+      pointer-events: none;
+      display: none;
+    }
   </style>
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
 
+  <!-- 登入畫面遮罩（請放在這裡！） -->
+  <div id="login-overlay">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 sm:p-8 shadow-2xl space-y-6">
+      <div class="text-center space-y-2">
+        <div class="w-12 h-12 mx-auto rounded-xl bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center text-emerald-600 font-bold text-xl">
+          S
+        </div>
+        <h2 class="text-xl font-bold text-slate-900">Sbtunux 區聯誼會會計系統</h2>
+        <p class="text-xs sm:text-sm text-slate-500">請輸入後台存取密碼以解鎖系統</p>
+      </div>
+
+      <form id="login-form" class="space-y-4">
+        <div>
+          <label for="login-password" class="block text-xs font-medium text-slate-700 mb-1">後台存取密碼</label>
+          <input id="login-password" type="password" required placeholder="請輸入密碼" class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm sm:text-base focus:ring-2 focus:ring-emerald-500 outline-none" />
+        </div>
+        <div id="login-error-msg" class="hidden text-xs text-rose-600 font-medium text-center"></div>
+        <button type="submit" class="w-full py-3 px-4 rounded-xl bg-emerald-600 text-white font-semibold text-sm sm:text-base hover:bg-emerald-700 transition-colors shadow-sm">
+          登入系統
+        </button>
+      </form>
+    </div>
+  </div>
   <!-- Top Navigation -->
   <header id="app-header" class="bg-slate-900 text-white shadow-sm no-print sticky top-0 z-30">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -3679,6 +3721,7 @@
               @page { size: A4 landscape; margin: 12mm; }
               @media print { body { margin: 0; } }
             </style></head><body>${inner}</body></html>`;
+          
         }
 
         function openAnnualMeetingReceipt() {
@@ -4009,7 +4052,7 @@
       }
     })();
   </script>
-  <script>
+<script>
     (function () {
       var body = document.body;
       var more = document.getElementById('more-sheet');
@@ -4050,6 +4093,100 @@
       // journal is the mobile landing tab, so FAB starts hidden there
       if (window.__syncNav) window.__syncNav(isMobile() ? 'journal' : 'report');
     })();
+
+    // ===== 登入驗證與防暴力破解功能 =====
+    const LOGIN_LOCK_KEY = 'sbtunux_login_lock_until';
+    const LOGIN_ATTEMPTS_KEY = 'sbtunux_login_attempts';
+    const MAX_ATTEMPTS = 3;
+    const LOCK_DURATION_MS = 5 * 60 * 1000; // 5 分鐘
+
+    document.getElementById('auth-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const pwdInput = document.getElementById('auth-password');
+      const errEl = document.getElementById('auth-error-msg');
+      const submitBtn = document.getElementById('btn-auth-submit');
+      const pwd = pwdInput.value.trim();
+      
+      errEl.classList.add('hidden');
+
+      // 1. 檢查是否處於鎖定狀態
+      const lockUntil = Number(localStorage.getItem(LOGIN_LOCK_KEY) || 0);
+      const now = Date.now();
+      if (now < lockUntil) {
+        const remainingSec = Math.ceil((lockUntil - now) / 1000);
+        errEl.textContent = `登入錯誤次數過多，已被鎖定。請於 ${Math.ceil(remainingSec / 60)} 分鐘後再試。`;
+        errEl.classList.remove('hidden');
+        return;
+      }
+
+      if (!pwd) {
+        errEl.textContent = '請輸入管理者密碼';
+        errEl.classList.remove('hidden');
+        return;
+      }
+
+      // 2. 檢查是否有設定 GAS 網址（透過 doGet 驗證密碼並從雲端載入資料）
+      const gasUrl = (typeof state !== 'undefined' && state.settings && state.settings.gasUrl) ? state.settings.gasUrl.trim() : '';
+      
+      if (gasUrl) {
+        try {
+          submitBtn.disabled = true;
+          submitBtn.textContent = '正在驗證密碼...';
+          
+          const res = await fetch(`${gasUrl}?pwd=${encodeURIComponent(pwd)}`);
+          const json = await res.json();
+          
+          if (json && json.ok) {
+            localStorage.removeItem(LOGIN_ATTEMPTS_KEY);
+            localStorage.removeItem(LOGIN_LOCK_KEY);
+            
+            if (json.data && json.data.hasData) {
+              if (typeof state !== 'undefined') {
+                Object.assign(state, DEFAULT_SETTINGS, json.data);
+                if (typeof renderAll === 'function') renderAll();
+              }
+            }
+            
+            const modal = document.getElementById('auth-modal');
+            if (modal) modal.classList.add('hidden');
+            return;
+          } else {
+            throw new Error(json.error || '密碼錯誤');
+          }
+        } catch (err) {
+          console.warn('雲端驗證失敗，改用本地密碼比對:', err);
+        } finally {
+          submitBtn.disabled = false;
+          submitBtn.textContent = '安全登入';
+        }
+      }
+
+      // 3. 本地備用密碼比對（預設為 admin123）
+      const correctPassword = (typeof state !== 'undefined' && state.settings && state.settings.adminPassword) ? state.settings.adminPassword : 'admin123';
+      
+      if (pwd === correctPassword) {
+        localStorage.removeItem(LOGIN_ATTEMPTS_KEY);
+        localStorage.removeItem(LOGIN_LOCK_KEY);
+        
+        const modal = document.getElementById('auth-modal');
+        if (modal) modal.classList.add('hidden');
+        
+        if (typeof showToast === 'function') showToast('登入成功！');
+      } else {
+        let attempts = Number(localStorage.getItem(LOGIN_ATTEMPTS_KEY) || 0) + 1;
+        localStorage.setItem(LOGIN_ATTEMPTS_KEY, attempts);
+        
+        if (attempts >= MAX_ATTEMPTS) {
+          const lockTime = Date.now() + LOCK_DURATION_MS;
+          localStorage.setItem(LOGIN_LOCK_KEY, lockTime);
+          errEl.textContent = `密碼連續錯誤達 ${MAX_ATTEMPTS} 次，系統已鎖定 5 分鐘。`;
+        } else {
+          errEl.textContent = `密碼錯誤！您還有 ${MAX_ATTEMPTS - attempts} 次嘗試機會。`;
+        }
+        errEl.classList.remove('hidden');
+      }
+    });
   </script>
 </body>
 </html>
