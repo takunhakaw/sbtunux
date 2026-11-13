@@ -654,6 +654,16 @@
                 <tbody id="event-church-fees-body" class="divide-y divide-slate-100"></tbody>
               </table>
             </div>
+            <div class="rounded-lg border border-emerald-200 bg-white p-2.5 space-y-2">
+              <div id="ev-headcount-summary" class="text-xs font-semibold text-emerald-900"></div>
+              <div class="flex flex-wrap items-center gap-2">
+                <label for="ev-direct-hc" class="text-xs font-medium text-emerald-900 whitespace-nowrap">未分教會人數（直接輸入活動人數）：</label>
+                <input id="ev-direct-hc" type="number" min="1" step="1" placeholder="人數" class="w-24 rounded-lg border border-emerald-300 bg-white px-2.5 py-1 text-sm font-semibold tabular-nums text-slate-900 focus:ring-2 focus:ring-emerald-500 outline-none" />
+                <span id="ev-direct-hc-calc" class="text-xs text-emerald-800 tabular-nums"></span>
+                <button id="btn-ev-direct-reg" type="button" class="px-3 py-1 rounded-lg bg-slate-800 text-white text-xs font-medium hover:bg-slate-700">登記報名費</button>
+              </div>
+              <div class="text-[11px] text-slate-500">適用於沒有各教會人數、只有活動總人數的情況，會依「報名費／人」計算並記為此活動的報名費收入，對象記為「未分教會」。</div>
+            </div>
           </div>
 
           <!-- Event Inline Accounting Entry Form -->
@@ -2284,6 +2294,19 @@
           `;
           tbody.appendChild(tr);
         });
+        const sumEl = document.getElementById('ev-headcount-summary');
+        if (sumEl) {
+          const regAll = regAcc ? state.transactions.filter(t => (t.eventName || '') === evName && t.accountId === regAcc.id) : [];
+          let totalHc = 0, directHc = 0;
+          regAll.forEach(t => {
+            let hc = 0;
+            if (t.headcount) hc = Number(t.headcount);
+            else { const mm = String(t.memo || '').match(/(\d+)\s*人/); if (mm) hc = Number(mm[1]); }
+            totalHc += hc;
+            if ((t.party || '').trim() === '未分教會') directHc += hc;
+          });
+          sumEl.textContent = `本活動報名總人數：${totalHc} 人` + (directHc > 0 ? `（含未分教會直接登記 ${directHc} 人）` : '');
+        }
         updateEvShareBatchCount();
       }
 
@@ -4647,6 +4670,40 @@
           showToast(`已登錄「${acc ? acc.name : ''}」$${fmt(amount)} 至活動`);
         });
 
+        document.getElementById('ev-direct-hc').addEventListener('input', () => {
+          const hc = Number(document.getElementById('ev-direct-hc').value) || 0;
+          const unit = Number((state.settings.feeRates || DEFAULT_SETTINGS.feeRates).regFeePerPerson) || 0;
+          document.getElementById('ev-direct-hc-calc').textContent = hc > 0 ? `× $${fmt(unit)}/人 ＝ $${fmt(hc * unit)}` : '';
+        });
+        document.getElementById('btn-ev-direct-reg').addEventListener('click', () => {
+          if (!selectedEventForDetail) return;
+          const hc = Math.floor(Number(document.getElementById('ev-direct-hc').value) || 0);
+          if (hc < 1) { showToast('請輸入活動人數'); return; }
+          const regAcc = state.accounts.find(a => a.type === 'income' && a.name === '活動報名費');
+          if (!regAcc) { showToast('找不到「活動報名費」科目'); return; }
+          const unit = Number((state.settings.feeRates || DEFAULT_SETTINGS.feeRates).regFeePerPerson) || 0;
+          const amt = hc * unit;
+          if (amt <= 0) { showToast('報名費／人為 0，請先於系統設定調整收費標準'); return; }
+          state.transactions.push({
+            id: 'tx-' + Date.now(),
+            date: `${state.settings.currentYear}-11-12`,
+            voucher: suggestNextVoucher(),
+            type: 'income',
+            wallet: state.settings.wallets[0] || '現金',
+            accountId: regAcc.id,
+            eventName: selectedEventForDetail,
+            headcount: hc,
+            amount: amt,
+            party: '未分教會',
+            memo: `活動報名費（未分教會直接登記 ${hc}人 × $${fmt(unit)}）`,
+            note: `出席人數：${hc}人（未分教會）`
+          });
+          document.getElementById('ev-direct-hc').value = '';
+          document.getElementById('ev-direct-hc-calc').textContent = '';
+          saveState();
+          renderAll();
+          showToast(`已登記活動人數 ${hc} 人，報名費 $${fmt(amt)}`);
+        });
         document.getElementById('event-church-fees-body').addEventListener('change', (e) => {
           if (e.target.matches('input[data-ev-share-cb]')) updateEvShareBatchCount();
         });
