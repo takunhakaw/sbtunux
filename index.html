@@ -119,7 +119,7 @@
     }
     table.rp-table .rp-div { border-right: 2px solid #000 !important; }
     table.rp-table .rp-hy { background: #9ca3af; font-weight: 700; text-align: center; font-size: 10pt; height: 25px; }
-    table.rp-table .rp-hs { background: #e5e7eb; font-weight: 700; text-align: center; font-size: 9.5pt; height: 25px; }
+    table.rp-table .rp-hs { background: #e5e7eb; font-weight: 700; text-align: center; font-size: 8.8pt; height: 25px; padding: 3px 1px; }
     table.rp-table .rp-cat {
       writing-mode: vertical-rl; text-orientation: upright; text-align: center;
       font-weight: 700; letter-spacing: 3px; background: #f9fafb; padding: 4px 1px; font-size: 10pt;
@@ -137,6 +137,39 @@
       body.printing-report .rp-sheet { display: block !important; }
       body.printing-report main { max-width: none !important; width: 100% !important; padding: 0 !important; margin: 0 !important; }
       body.printing-report #view-report { margin: 0 !important; }
+    }
+
+
+    /* ===== 支出明細表（附件）A4 橫式列印版 ===== */
+    .ed-sheet { display: none; }
+    .ed-sheet, .ed-sheet * { box-sizing: border-box; }
+    .ed-sheet {
+      font-family: "DFKai-SB", "BiauKai", "標楷體", "Noto Serif TC", "PMingLiU", serif;
+      color: #000; background: #fff; font-size: 10pt;
+    }
+    .ed-title { text-align: center; font-size: 16pt; font-weight: 700; letter-spacing: 1px; margin: 0 0 2px 0; }
+    .ed-sub { text-align: center; font-size: 10pt; margin: 0 0 8px 0; }
+    .ed-cat-head { font-size: 12pt; font-weight: 700; margin: 10px 0 4px 0; padding-left: 6px; border-left: 5px solid #000; }
+    table.ed-table { width: 100%; border-collapse: collapse; table-layout: fixed; border: 2px solid #000; margin: 0 0 8px 0; font-size: 9.5pt; line-height: 1.25; }
+    table.ed-table th, table.ed-table td { border: 1px solid #000; padding: 2px 4px; vertical-align: middle; overflow-wrap: anywhere; color: #000; }
+    table.ed-table thead { display: table-header-group; }
+    table.ed-table tr { break-inside: avoid; page-break-inside: avoid; }
+    table.ed-table th.ed-acc { background: #9ca3af; text-align: left; font-size: 10.5pt; padding: 4px 6px; }
+    table.ed-table th.ed-colh { background: #e5e7eb; text-align: center; font-weight: 700; }
+    table.ed-table td.c { text-align: center; }
+    table.ed-table td.r { text-align: right; font-variant-numeric: tabular-nums; padding-right: 6px; }
+    table.ed-table td.ed-empty { color: #444; padding: 6px; }
+    table.ed-table tr.ed-subtotal td { background: #e5e7eb; font-weight: 700; }
+    .ed-cat-total { font-weight: 700; text-align: right; margin: -2px 0 8px 0; padding: 3px 6px; border: 1px solid #000; background: #f3f4f6; }
+    .ed-sec { font-size: 12pt; font-weight: 700; margin: 8px 0 4px 0; padding-left: 6px; border-left: 5px solid #000; }
+    table.ed-table td.ed-catc { text-align: center; font-weight: 700; background: #f9fafb; }
+    table.ed-table tr.ed-grandrow td { background: #9ca3af; font-weight: 700; }
+    .ed-grand { font-weight: 700; font-size: 11pt; margin-top: 10px; padding: 6px 8px; border: 2px solid #000; background: #d1d5db; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    @media print {
+      body.printing-expdetail .expd-screen { display: none !important; }
+      body.printing-expdetail .ed-sheet { display: block !important; }
+      body.printing-expdetail main { max-width: none !important; width: 100% !important; padding: 0 !important; margin: 0 !important; }
+      body.printing-expdetail #view-expdetail { margin: 0 !important; }
     }
 
     /* ===== 登入畫面遮罩樣式 ===== */
@@ -507,18 +540,18 @@
 
     <!-- TAB 3: Expense Detail Table (Printable) -->
     <section id="view-expdetail" class="tab-view hidden space-y-4">
-      <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm space-y-4">
+      <div class="expd-screen bg-white rounded-xl border border-slate-200 p-5 shadow-sm space-y-4">
         <div class="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-200">
           <div>
             <h2 id="expdetail-title" class="text-lg font-bold text-slate-900">Sbtunux 區聯誼會 2026 年度支出分類明細表</h2>
-            <p class="text-xs sm:text-sm text-slate-500 mt-0.5 no-print">逐項檢視各支出科目的前一年度決算、本年度預算、實際執行與預算差額，支援分類篩選與列印。</p>
+            <p class="text-xs sm:text-sm text-slate-500 mt-0.5 no-print">逐項檢視各支出科目的前一年度決算、本年度預算、實際執行與預算差額；列印時會產出 A4 橫式「支出明細表（附件）」，列出每個支出科目的逐筆支出明細，並支援分類篩選。</p>
           </div>
           <div class="flex flex-wrap items-center gap-2 no-print">
             <select id="expdetail-cat-filter" class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs sm:text-sm bg-white">
               <option value="all">全部支出分類</option>
             </select>
             <button id="btn-print-expdetail" type="button" class="px-3 py-1.5 rounded-lg bg-slate-800 text-white text-xs sm:text-sm font-medium hover:bg-slate-700 transition-colors">
-              列印明細表
+              列印支出明細（附件）
             </button>
           </div>
         </div>
@@ -550,6 +583,9 @@
           </table>
         </div>
       </div>
+
+      <!-- 支出明細表（附件）A4 橫式列印版：僅列印時顯示，列印前由資料自動帶入 -->
+      <div id="expdetail-print-sheet" class="ed-sheet" aria-hidden="true"></div>
     </section>
 
     <!-- TAB 3.5: Events / Activities Summary & Detail (Desktop-first) -->
@@ -2105,20 +2141,20 @@
             const items = state.accounts.filter(a => a.type === type && a.category === cat);
             const slots = Math.max(items.length, RP_MIN_SLOTS[cat] || 0, 1);
             const start = rows.length;
-            let b25 = 0, a25 = 0, b26 = 0;
+            let a25 = 0, b26 = 0, a26 = 0;
             for (let i = 0; i < slots; i++) {
               const it = items[i];
               if (it) {
-                const v25b = Number(it.b2025) || 0;
                 const v25a = useCorr ? (Number(it.a2025Corr) || 0) : (Number(it.a2025Orig) || 0);
                 const v26b = Number(it.b2026) || 0;
-                b25 += v25b; a25 += v25a; b26 += v26b;
-                rows.push({ cat, kind: 'item', name: it.name, v: [v25b, v25a, v26b] });
+                const v26a = getActual2026ByAccountId(it.id);
+                a25 += v25a; b26 += v26b; a26 += v26a;
+                rows.push({ cat, kind: 'item', name: it.name, v: [v25a, v26b, v26a] });
               } else {
                 rows.push({ cat, kind: 'blank' });
               }
             }
-            rows.push({ cat, kind: 'sub', v: [b25, a25, b26] });
+            rows.push({ cat, kind: 'sub', v: [a25, b26, a26] });
             rows[start].catFirst = true;
             rows[start].catSpan = rows.length - start;
           });
@@ -2156,7 +2192,7 @@
             h += `<td class="rp-num rp-sub-num">${fmt(r.v[0])}</td><td class="rp-num rp-sub-num">${fmt(r.v[1])}</td><td class="rp-num rp-sub-num${d}">${fmt(r.v[2])}</td>`;
           } else if (r.kind === 'item') {
             const nm = String(r.name || '');
-            h += `<td class="${nm.length > 9 ? 'rp-name-compact' : 'rp-name'}">${esc(nm)}</td>`;
+            h += `<td class="${nm.length > 7 ? 'rp-name-compact' : 'rp-name'}">${esc(nm)}</td>`;
             h += `<td class="rp-num">${numOrBlank(r.v[0])}</td><td class="rp-num">${numOrBlank(r.v[1])}</td><td class="rp-num${d}">${numOrBlank(r.v[2])}</td>`;
           } else {
             h += `<td class="rp-name"></td><td class="rp-num"></td><td class="rp-num"></td><td class="rp-num${d}"></td>`;
@@ -2180,12 +2216,13 @@
           </tr>`;
         };
         // null = 不適用（灰底）
-        body += sumRow('本年度收入總計', [t.inc2025Budget, t.inc2025Actual, t.inc2026Budget],
-                       '本年度支出總計', [t.exp2025Budget, t.exp2025Actual, t.exp2026Budget], true);
-        body += sumRow('上年度結存金', [t.prev2025Carry, t.prev2025Carry, null],
-                       '本年度結存金', [null, t.carry2025, null]);
-        body += sumRow('總額', [t.inc2025Budget + t.prev2025Carry, t.inc2025Grand, t.inc2026Budget],
-                       '總額', [t.exp2025Budget, t.exp2025Actual + t.carry2025, t.exp2026Budget]);
+        // 數字欄順序：[2025 年決算, 2026 年預算, 2026 年決算]
+        body += sumRow('本年度收入總計', [t.inc2025Actual, t.inc2026Budget, t.inc2026Actual],
+                       '本年度支出總計', [t.exp2025Actual, t.exp2026Budget, t.exp2026Actual], true);
+        body += sumRow('上年度結存金', [t.prev2025Carry, null, t.carry2026],
+                       '本年度結存金', [t.carry2025, null, t.balanceNow2026]);
+        body += sumRow('總額', [t.inc2025Grand, t.inc2026Budget, t.inc2026Actual + t.carry2026],
+                       '總額', [t.exp2025Actual + t.carry2025, t.exp2026Budget, t.exp2026Actual + t.balanceNow2026]);
 
         const by = s.baseYear, cy = s.currentYear;
         const title = (document.getElementById('report-main-title') || {}).textContent || `${s.orgName} ${by} 年度收支預決算暨 ${cy} 年度預算表`;
@@ -2193,17 +2230,17 @@
           <h1 class="rp-title">${esc(title)}</h1>
           <table class="rp-table">
             <colgroup>
-              <col style="width:3.6%"><col style="width:17.4%"><col style="width:9.6%"><col style="width:9.7%"><col style="width:9.7%">
-              <col style="width:3.6%"><col style="width:17.4%"><col style="width:9.6%"><col style="width:9.7%"><col style="width:9.7%">
+              <col style="width:3.6%"><col style="width:15.6%"><col style="width:10.2%"><col style="width:10.3%"><col style="width:10.3%">
+              <col style="width:3.6%"><col style="width:15.6%"><col style="width:10.2%"><col style="width:10.3%"><col style="width:10.3%">
             </colgroup>
             <thead>
               <tr>
-                <th colspan="4" class="rp-hy">${by} 年度</th><th class="rp-hy rp-div">${cy} 年度</th>
-                <th colspan="4" class="rp-hy">${by} 年度</th><th class="rp-hy">${cy} 年度</th>
+                <th colspan="2" rowspan="2" class="rp-hy">收入科目</th><th class="rp-hy">${by} 年度</th><th colspan="2" class="rp-hy rp-div">${cy} 年度</th>
+                <th colspan="2" rowspan="2" class="rp-hy">支出科目</th><th class="rp-hy">${by} 年度</th><th colspan="2" class="rp-hy">${cy} 年度</th>
               </tr>
               <tr>
-                <th colspan="2" class="rp-hs">科目</th><th class="rp-hs">收入預算</th><th class="rp-hs">收入決算</th><th class="rp-hs rp-div">收入預算</th>
-                <th colspan="2" class="rp-hs">科目</th><th class="rp-hs">支出預算</th><th class="rp-hs">支出決算</th><th class="rp-hs">支出預算</th>
+                <th class="rp-hs">${by}年決算</th><th class="rp-hs">${cy}年預算</th><th class="rp-hs rp-div">${cy}年決算</th>
+                <th class="rp-hs">${by}年決算</th><th class="rp-hs">${cy}年預算</th><th class="rp-hs">${cy}年決算</th>
               </tr>
             </thead>
             <tbody>${body}</tbody>
@@ -3235,6 +3272,121 @@
         }
       }
 
+
+      /* ===== 支出明細表（附件）A4 橫式列印版 ===== */
+      function buildExpDetailPrintSheet() {
+        const host = document.getElementById('expdetail-print-sheet');
+        if (!host) return;
+        const s = state.settings;
+        const esc = v => String(v == null ? '' : v).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const catFilter = document.getElementById('expdetail-cat-filter').value;
+        const cats = catFilter === 'all' ? (s.expenseCategories || []) : [catFilter];
+        const COLS = 9;
+        let grandB = 0, grandA = 0, grandN = 0, catsHtml = '';
+
+        cats.forEach(cat => {
+          const accs = state.accounts.filter(a => a.type === 'expense' && a.category === cat);
+          if (!accs.length) return;
+          let catB = 0, catA = 0, tables = '';
+          accs.forEach(a => {
+            const txs = state.transactions.filter(t => t.accountId === a.id)
+              .slice().sort((x, y) => (x.date || '').localeCompare(y.date || '') || (x.voucher || '').localeCompare(y.voucher || ''));
+            const direct = Number(a.directActual) || 0;
+            const b26 = Number(a.b2026) || 0;
+            const actual = getActual2026ByAccountId(a.id);
+            catB += b26; catA += actual;
+            let rows = '', n = 0;
+            txs.forEach(t => {
+              n++;
+              rows += `<tr><td class="c">${n}</td><td class="c">${esc(t.date)}</td><td class="c">${esc(t.voucher)}</td><td>${esc(t.memo)}</td><td>${esc(t.party)}</td><td>${esc(t.eventName)}</td><td class="c">${esc(t.wallet)}</td><td class="r">${fmt(t.amount)}</td><td>${esc(t.note)}</td></tr>`;
+            });
+            if (direct) {
+              n++;
+              rows += `<tr><td class="c">${n}</td><td></td><td></td><td>預算表直接登打金額（未建傳票）</td><td></td><td></td><td></td><td class="r">${fmt(direct)}</td><td></td></tr>`;
+            }
+            if (!n) rows = `<tr><td colspan="${COLS}" class="c ed-empty">本年度尚無支出紀錄</td></tr>`;
+            rows += `<tr class="ed-subtotal"><td colspan="7" style="text-align:right;padding-right:10px;letter-spacing:3px">合計（${n} 筆）</td><td class="r">${fmt(actual)}</td><td></td></tr>`;
+            const diff = b26 - actual;
+            tables += `
+              <table class="ed-table">
+                <colgroup><col style="width:4%"><col style="width:9%"><col style="width:9%"><col style="width:24%"><col style="width:14%"><col style="width:13%"><col style="width:6%"><col style="width:10%"><col style="width:11%"></colgroup>
+                <thead>
+                  <tr><th colspan="${COLS}" class="ed-acc">${esc(cat)}／${esc(a.name)}　　${esc(s.currentYear)} 預算：${fmt(b26)}　　實際支出：${fmt(actual)}　　預算差額：${fmt(diff)}</th></tr>
+                  <tr><th class="ed-colh">序</th><th class="ed-colh">日期</th><th class="ed-colh">傳票號碼</th><th class="ed-colh">摘要</th><th class="ed-colh">對象／廠商</th><th class="ed-colh">活動</th><th class="ed-colh">帳戶</th><th class="ed-colh">金額</th><th class="ed-colh">備註</th></tr>
+                </thead>
+                <tbody>${rows}</tbody>
+              </table>`;
+            grandN += txs.length + (direct ? 1 : 0);
+          });
+          grandB += catB; grandA += catA;
+          catsHtml += `<div class="ed-cat-head">${esc(cat)}</div>${tables}
+            <div class="ed-cat-total">${esc(cat)} 合計　預算：${fmt(catB)}　實際支出：${fmt(catA)}　預算差額：${fmt(catB - catA)}</div>`;
+        });
+
+        if (!catsHtml) catsHtml = '<p style="text-align:center;padding:20px">尚無支出科目。</p>';
+        // ---- 一、支出科目彙總表 ----
+        const useCorr = state.useCorrected2025;
+        let sumRows = '', gA25 = 0, gB26 = 0, gA26 = 0, gN = 0;
+        const rateOf = (b, a) => b > 0 ? ((a / b) * 100).toFixed(1) + '%' : '—';
+        cats.forEach(cat => {
+          const accs = state.accounts.filter(a => a.type === 'expense' && a.category === cat);
+          if (!accs.length) return;
+          let cA25 = 0, cB26 = 0, cA26 = 0, cN = 0;
+          accs.forEach((a, idx) => {
+            const a25 = useCorr ? (Number(a.a2025Corr) || 0) : (Number(a.a2025Orig) || 0);
+            const b26 = Number(a.b2026) || 0;
+            const a26 = getActual2026ByAccountId(a.id);
+            const n = state.transactions.filter(t => t.accountId === a.id).length + (Number(a.directActual) ? 1 : 0);
+            cA25 += a25; cB26 += b26; cA26 += a26; cN += n;
+            sumRows += `<tr>${idx === 0 ? `<td rowspan="${accs.length + 1}" class="ed-catc">${esc(cat)}</td>` : ''}<td>${esc(a.name)}</td><td class="r">${fmt(a25)}</td><td class="r">${fmt(b26)}</td><td class="r">${fmt(a26)}</td><td class="r">${fmt(b26 - a26)}</td><td class="r">${rateOf(b26, a26)}</td><td class="c">${n}</td></tr>`;
+          });
+          sumRows += `<tr class="ed-subtotal"><td style="text-align:right;padding-right:10px;letter-spacing:3px">合計</td><td class="r">${fmt(cA25)}</td><td class="r">${fmt(cB26)}</td><td class="r">${fmt(cA26)}</td><td class="r">${fmt(cB26 - cA26)}</td><td class="r">${rateOf(cB26, cA26)}</td><td class="c">${cN}</td></tr>`;
+          gA25 += cA25; gB26 += cB26; gA26 += cA26; gN += cN;
+        });
+        sumRows += `<tr class="ed-grandrow"><td colspan="2" style="text-align:right;padding-right:10px;letter-spacing:3px">支出總計</td><td class="r">${fmt(gA25)}</td><td class="r">${fmt(gB26)}</td><td class="r">${fmt(gA26)}</td><td class="r">${fmt(gB26 - gA26)}</td><td class="r">${rateOf(gB26, gA26)}</td><td class="c">${gN}</td></tr>`;
+        const by = s.baseYear, cy = s.currentYear;
+        const summaryHtml = sumRows.indexOf('<td class="ed-catc"') < 0 && !gN && !gB26 && !gA25 && !gA26 && cats.every(c => !state.accounts.some(a => a.type === 'expense' && a.category === c))
+          ? '' : `
+          <div class="ed-sec">一、支出科目彙總表</div>
+          <table class="ed-table">
+            <colgroup><col style="width:11%"><col style="width:23%"><col style="width:12%"><col style="width:12%"><col style="width:12%"><col style="width:12%"><col style="width:9%"><col style="width:9%"></colgroup>
+            <thead><tr><th class="ed-colh">大分類</th><th class="ed-colh">支出科目</th><th class="ed-colh">${by}年決算</th><th class="ed-colh">${cy}年預算</th><th class="ed-colh">${cy}年決算</th><th class="ed-colh">預算差額</th><th class="ed-colh">執行率</th><th class="ed-colh">明細筆數</th></tr></thead>
+            <tbody>${sumRows}</tbody>
+          </table>`;
+        const d = new Date();
+        const today = `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
+        host.innerHTML = `
+          <h1 class="ed-title">${esc(s.orgName)} ${esc(s.currentYear)} 年度支出明細表（附件）</h1>
+          <p class="ed-sub">範圍：${catFilter === 'all' ? '全部支出分類' : esc(catFilter)}　｜　單位：新臺幣元　｜　列印日期：${today}</p>
+          ${summaryHtml}
+          <div class="ed-sec"${summaryHtml ? ' style="break-before:page;page-break-before:always"' : ''}>${summaryHtml ? '二、' : ''}附件：各支出科目逐筆支出明細</div>
+          ${catsHtml}
+          <div class="ed-grand"><span>支出總計（共 ${grandN} 筆）</span><span>預算合計：${fmt(grandB)}</span><span>實際支出：${fmt(grandA)}</span><span>預算差額：${fmt(grandB - grandA)}</span></div>`;
+      }
+
+      function preparePrintExpDetail() {
+        if (document.body.classList.contains('printing-receipt')) return;
+        const v = document.getElementById('view-expdetail');
+        if (!v || v.classList.contains('hidden')) return;
+        buildExpDetailPrintSheet();
+        document.body.classList.add('printing-expdetail');
+        if (!document.getElementById('ed-page-style')) {
+          const st = document.createElement('style');
+          st.id = 'ed-page-style';
+          st.textContent = '@page { size: A4 landscape; margin: 10mm 10mm 14mm 10mm; @bottom-center { content: "第 " counter(page) " 頁 / 共 " counter(pages) " 頁"; font-size: 9pt; } }';
+          document.head.appendChild(st);
+        }
+      }
+
+      function cleanupPrintExpDetail() {
+        document.body.classList.remove('printing-expdetail');
+        const st = document.getElementById('ed-page-style');
+        if (st) st.remove();
+      }
+
+      window.addEventListener('beforeprint', preparePrintExpDetail);
+      window.addEventListener('afterprint', cleanupPrintExpDetail);
+
       function renderExpDetailTable() {
         const s = state.settings;
         const catFilter = document.getElementById('expdetail-cat-filter').value;
@@ -3682,7 +3834,7 @@
           populateSettingsForm();
           renderAll();
         });
-        document.getElementById('btn-print-expdetail').addEventListener('click', () => window.print());
+        document.getElementById('btn-print-expdetail').addEventListener('click', () => { preparePrintExpDetail(); window.print(); });
         document.getElementById('expdetail-cat-filter').addEventListener('change', renderExpDetailTable);
         document.getElementById('expdetail-chart-legend').addEventListener('click', (e) => {
           const b = e.target.closest('[data-chart-series]');
