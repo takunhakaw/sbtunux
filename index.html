@@ -797,7 +797,7 @@
         </div>
 
         <!-- Church Fee Statistical Summary Cards -->
-        <div id="churches-stat-cards" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+        <div id="churches-stat-cards" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"></div>
 
         <div class="overflow-x-auto border border-slate-200 rounded-lg">
           <table class="w-full text-xs sm:text-sm text-left border-collapse">
@@ -806,6 +806,7 @@
                 <th class="px-3 py-2.5 font-semibold w-14 text-center">項次</th>
                 <th class="px-3 py-2.5 font-semibold">教會名稱</th>
                 <th class="px-3 py-2.5 font-semibold text-right">年度負擔金</th>
+                <th class="px-3 py-2.5 font-semibold text-right">大手牽小手關懷金</th>
                 <th class="px-3 py-2.5 font-semibold text-right">活動分擔金</th>
                 <th class="px-3 py-2.5 font-semibold text-right">合計</th>
                 <th class="px-3 py-2.5 font-semibold text-center">繳費 / 催繳狀態</th>
@@ -1042,6 +1043,12 @@
                   <input id="rate-reg-per-person" type="number" min="0" step="1" required class="w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm tabular-nums font-semibold" />
                 </div>
               </div>
+              <div class="grid grid-cols-3 gap-2">
+                <div class="col-span-3">
+                  <label for="rate-care" class="block text-[11px] font-medium text-slate-600 mb-0.5">大手牽小手關懷金/間（標示為「支會」的教會免繳）</label>
+                  <input id="rate-care" type="number" min="0" step="1" class="w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm tabular-nums font-semibold" />
+                </div>
+              </div>
               <div>
                 <label for="fee-adjust-note" class="block text-[11px] font-medium text-slate-600 mb-0.5">調整備註（調整費用時必填原因或生效說明）</label>
                 <input id="fee-adjust-note" type="text" placeholder="例：2026下半年區聯會決議調整活動分擔金" class="w-full rounded-lg border border-slate-300 px-3 py-1.5 text-xs sm:text-sm" />
@@ -1241,9 +1248,11 @@
         feeRates: {
           annualFee: 8000,
           eventShareFee: 1000,
-          regFeePerPerson: 200
+          regFeePerPerson: 200,
+          careFee: 0
         },
         feeHistory: [],
+        exemptChurches: [],
         accountantName: '',
         treasurerName: '',
         presidentName: '',
@@ -1542,7 +1551,11 @@
       }
 
       function isMultiChurchAccount(acc) {
-        return Boolean(acc && acc.type === 'income' && (acc.name === '年度負擔金' || acc.name === '活動分擔金'));
+        return Boolean(acc && acc.type === 'income' && (acc.name === '年度負擔金' || acc.name === '活動分擔金' || acc.name === '大手牽小手關懷金'));
+      }
+
+      function isChurchExempt(ch, acc) {
+        return Boolean(acc && acc.type === 'income' && acc.name === '大手牽小手關懷金' && (state.settings.exemptChurches || []).includes(ch));
       }
 
       function isChurchPaid(ch, acc) {
@@ -2460,7 +2473,7 @@
         }
       }
 
-      const CHURCH_FEE_ACC_NAMES = ['年度負擔金', '活動分擔金', '活動報名費'];
+      const CHURCH_FEE_ACC_NAMES = ['年度負擔金', '活動分擔金', '活動報名費', '大手牽小手關懷金'];
 
       function isChurchFeeAccount(accId) {
         const acc = state.accounts.find(a => a.id === accId);
@@ -2473,6 +2486,7 @@
         if (acc.name === '年度負擔金') return Number(r.annualFee) || 0;
         if (acc.name === '活動分擔金') return Number(r.eventShareFee) || 0;
         if (acc.name === '活動報名費') return Number(r.regFeePerPerson) || 0;
+        if (acc.name === '大手牽小手關懷金') return Number(r.careFee) || 0;
         return 0;
       }
 
@@ -2528,13 +2542,19 @@
         (state.settings.churches || []).forEach(ch => {
           const active = multi ? txChurchSel.has(ch) : currentParty === ch;
           const paid = multi && isChurchPaid(ch, acc);
+          const exemptCh = isChurchExempt(ch, acc);
           const btn = document.createElement('button');
           btn.type = 'button';
           btn.dataset.churchName = ch;
           btn.className = 'tx-church-pill px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors ' +
             (active ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-emerald-900 border-emerald-200 hover:bg-emerald-100');
-          btn.textContent = (paid ? '✓ ' : '') + ch;
+          btn.textContent = (paid ? '✓ ' : '') + ch + (exemptCh ? '（免繳）' : '');
           if (paid) btn.title = '此項目已有繳費紀錄';
+          if (exemptCh) {
+            btn.disabled = true;
+            btn.title = '支會免繳大手牽小手關懷金';
+            btn.className = 'tx-church-pill px-2.5 py-1 rounded-lg text-xs border border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed';
+          }
           pillsWrap.appendChild(btn);
         });
       }
@@ -2548,6 +2568,23 @@
             const span = document.createElement('span');
             span.className = 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-xs font-medium border border-emerald-200';
             span.innerHTML = `<span>${ch}</span>`;
+            const isEx = (state.settings.exemptChurches || []).includes(ch);
+            const tog = document.createElement('button');
+            tog.type = 'button';
+            tog.className = 'text-[10px] px-1.5 rounded border ' + (isEx ? 'bg-amber-100 text-amber-800 border-amber-300' : 'bg-white text-slate-500 border-slate-300 hover:bg-slate-100');
+            tog.textContent = isEx ? '支會・免繳關懷金' : '設為支會';
+            tog.title = '支會不需繳納大手牽小手關懷金';
+            tog.addEventListener('click', () => {
+              if (!Array.isArray(state.settings.exemptChurches)) state.settings.exemptChurches = [];
+              const arr = state.settings.exemptChurches;
+              const k = arr.indexOf(ch);
+              if (k >= 0) arr.splice(k, 1); else arr.push(ch);
+              saveState();
+              renderChurchTagsAndView();
+              updateTxChurchSelectorVisibility();
+              showToast(k >= 0 ? `「${ch}」已改為需繳納關懷金` : `「${ch}」設為支會，免繳大手牽小手關懷金`);
+            });
+            span.appendChild(tog);
             const delBtn = document.createElement('button');
             delBtn.type = 'button';
             delBtn.className = 'text-emerald-600 hover:text-rose-600 font-bold';
@@ -2569,7 +2606,7 @@
         const rates = state.settings.feeRates || DEFAULT_SETTINGS.feeRates;
         const bannerEl = document.getElementById('churches-rate-banner');
         if (bannerEl) {
-          bannerEl.textContent = `現行標準：年度負擔金 $${fmt(rates.annualFee)}/間 ｜ 活動分擔金 $${fmt(rates.eventShareFee)}/間（歷史帳務不溯及既往）`;
+          bannerEl.textContent = `現行標準：年度負擔金 $${fmt(rates.annualFee)}/間 ｜ 活動分擔金 $${fmt(rates.eventShareFee)}/間 ｜ 大手牽小手關懷金 $${fmt(rates.careFee)}/間（支會免繳）（歷史帳務不溯及既往）`;
         }
         const histEl = document.getElementById('fee-history-list');
         if (histEl) {
@@ -2596,6 +2633,10 @@
 
         const annualAcc = state.accounts.find(a => a.type === 'income' && a.name === '年度負擔金');
         const shareAcc = state.accounts.find(a => a.type === 'income' && a.name === '活動分擔金');
+        const careAcc = state.accounts.find(a => a.type === 'income' && a.name === '大手牽小手關懷金');
+        const exemptSet = new Set(state.settings.exemptChurches || []);
+        let careTotal = 0, carePaidCount = 0, careDueCount = 0;
+        const careUnpaid = [];
         const events = state.settings.events || [];
         let annualTotal = 0;
         let annualPaidCount = 0;
@@ -2638,11 +2679,21 @@
             shareUnpaidChurches.push(`${ch}(缺${unpaidEventsForCh.length}場)`);
           }
 
-          const rowSum = annualSum + shareSum;
+          const isExempt = exemptSet.has(ch);
+          const careSum = careAcc ? state.transactions
+            .filter(t => t.accountId === careAcc.id && ((t.party || '').trim() === ch || (t.memo || '').includes(ch)))
+            .reduce((s, t) => s + (Number(t.amount) || 0), 0) : 0;
+          careTotal += careSum;
+          if (!isExempt) {
+            careDueCount += 1;
+            if (careSum > 0) carePaidCount += 1; else careUnpaid.push(ch);
+          }
+          const rowSum = annualSum + shareSum + careSum;
           grandTotal += rowSum;
 
           const missing = [];
           if (annualSum <= 0) missing.push('年度負擔金');
+          if (!isExempt && careAcc && careSum <= 0) missing.push('大手牽小手關懷金');
           if (events.length > 0 && unpaidEventsForCh.length > 0) {
             missing.push(`活動分擔金(${unpaidEventsForCh.join('、')})`);
           }
@@ -2656,6 +2707,7 @@
             <td class="px-3 py-2 text-center text-slate-500 tabular-nums">${idx + 1}</td>
             <td class="px-3 py-2 font-semibold text-slate-900">${ch}</td>
             <td class="px-3 py-2 text-right tabular-nums ${annualSum > 0 ? 'text-emerald-700 font-semibold' : 'text-rose-600 font-medium'}">${annualSum > 0 ? '$' + fmt(annualSum) : '未繳'}</td>
+            <td class="px-3 py-2 text-right tabular-nums ${isExempt ? 'text-slate-400' : (careSum > 0 ? 'text-emerald-700 font-semibold' : 'text-rose-600 font-medium')}">${isExempt ? (careSum > 0 ? '$' + fmt(careSum) + '（支會）' : '免繳（支會）') : (careSum > 0 ? '$' + fmt(careSum) : '未繳')}</td>
             <td class="px-3 py-2 text-right tabular-nums ${shareAllPaid ? 'text-emerald-700 font-semibold' : 'text-rose-600 font-medium'}">
               <div>${shareSum > 0 ? '$' + fmt(shareSum) : '未繳'}</div>
               ${events.length > 0 ? `<div class="text-[11px] font-normal ${shareAllPaid ? 'text-emerald-600' : 'text-rose-500'}">已繳 ${chPaidEvents}/${events.length} 場</div>` : ''}
@@ -2671,7 +2723,7 @@
         });
 
         if (tbody.children.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="6" class="px-3 py-8 text-center text-emerald-700 font-medium">所有教會皆已繳清，無待催繳項目！</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="7" class="px-3 py-8 text-center text-emerald-700 font-medium">所有教會皆已繳清，無待催繳項目！</td></tr>';
         }
 
         if (cardsEl) {
@@ -2698,6 +2750,16 @@
                 ${events.length === 0 ? '尚未新增活動場次' : (shareUnpaidChurches.length > 0 ? `待催繳：${shareUnpaidChurches.join('、')}` : '全部場次已繳清')}
               </div>
             </div>
+            <div class="rounded-xl border border-slate-200 bg-slate-50 p-3.5">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-medium text-slate-500">大手牽小手關懷金統計（支會免繳）</span>
+                <span class="text-xs font-semibold text-emerald-700">已繳 ${carePaidCount} / ${careDueCount} 間（${careDueCount > 0 ? ((carePaidCount / careDueCount) * 100).toFixed(0) : 0}%）</span>
+              </div>
+              <div class="mt-1 text-xl font-bold text-emerald-700 tabular-nums">$${fmt(careTotal)}</div>
+              <div class="mt-1 text-xs ${careUnpaid.length > 0 ? 'text-rose-600' : 'text-emerald-700'}">
+                ${careDueCount === 0 ? '所有教會皆為支會，無需繳納' : (careUnpaid.length > 0 ? `待催繳 (${careUnpaid.length}間)：${careUnpaid.join('、')}` : '應繳教會已全數繳清')}${exemptSet.size > 0 ? `<div class="text-slate-500 mt-0.5">免繳支會：${Array.from(exemptSet).join('、')}</div>` : ''}
+              </div>
+            </div>
           `;
         }
 
@@ -2705,10 +2767,11 @@
           <tr>
             <td colspan="2" class="px-3 py-2.5 text-slate-900">合計（共 ${churches.length} 間教會 × ${events.length} 場活動）</td>
             <td class="px-3 py-2.5 text-right tabular-nums"><div>$${fmt(annualTotal)}</div><div class="text-[11px] font-normal text-slate-500">已繳 ${annualPaidCount}/${churches.length} 間</div></td>
+            <td class="px-3 py-2.5 text-right tabular-nums"><div>$${fmt(careTotal)}</div><div class="text-[11px] font-normal text-slate-500">已繳 ${carePaidCount}/${careDueCount} 間（支會免繳 ${churches.length - careDueCount} 間）</div></td>
             <td class="px-3 py-2.5 text-right tabular-nums"><div>$${fmt(shareTotal)}</div><div class="text-[11px] font-normal text-slate-500">已繳 ${sharePaidSlots}/${shareTotalSlots} 場次</div></td>
             <td class="px-3 py-2.5 text-right tabular-nums text-emerald-800">$${fmt(grandTotal)}</td>
-            <td class="px-3 py-2.5 text-center text-xs ${(annualUnpaidChurches.length + shareUnpaidChurches.length) > 0 ? 'text-rose-700' : 'text-emerald-700'}">
-              ${(annualUnpaidChurches.length + shareUnpaidChurches.length) > 0 ? '尚有未繳場次/項目' : '全數繳清'}
+            <td class="px-3 py-2.5 text-center text-xs ${(annualUnpaidChurches.length + shareUnpaidChurches.length + careUnpaid.length) > 0 ? 'text-rose-700' : 'text-emerald-700'}">
+              ${(annualUnpaidChurches.length + shareUnpaidChurches.length + careUnpaid.length) > 0 ? '尚有未繳場次/項目' : '全數繳清'}
             </td>
           </tr>
         `;
@@ -2745,6 +2808,8 @@
         if (rAnn) rAnn.value = Number(r.annualFee) || 0;
         if (rShr) rShr.value = Number(r.eventShareFee) || 0;
         if (rReg) rReg.value = Number(r.regFeePerPerson) || 0;
+        const rCare = document.getElementById('rate-care');
+        if (rCare) rCare.value = Number(r.careFee) || 0;
         const gasInput = document.getElementById('setting-gas-url');
         if (gasInput) gasInput.value = s.gasUrl || '';
         const statusEl = document.getElementById('cloud-sync-status');
@@ -3456,7 +3521,8 @@
             const date = document.getElementById('tx-date').value;
             const wallet = document.getElementById('tx-wallet').value;
             const note = document.getElementById('tx-note').value.trim() || '批次登錄';
-            const list = Array.from(txChurchSel);
+            const list = Array.from(txChurchSel).filter(ch => !isChurchExempt(ch, accSel));
+            if (list.length === 0) { showToast('所選教會皆為免繳對象'); return; }
             const firstVoucher = document.getElementById('tx-voucher').value.trim();
             list.forEach((ch, i) => {
               state.transactions.push({
@@ -4249,13 +4315,13 @@
           const acc = currentAccForChurchTools();
           if (!isMultiChurchAccount(acc)) return;
           txChurchSel.clear();
-          (state.settings.churches || []).forEach(ch => { if (!isChurchPaid(ch, acc)) txChurchSel.add(ch); });
+          (state.settings.churches || []).forEach(ch => { if (!isChurchPaid(ch, acc) && !isChurchExempt(ch, acc)) txChurchSel.add(ch); });
           syncMultiChurchFields(acc);
         });
         document.getElementById('btn-church-select-all').addEventListener('click', () => {
           const acc = currentAccForChurchTools();
           if (!isMultiChurchAccount(acc)) return;
-          (state.settings.churches || []).forEach(ch => txChurchSel.add(ch));
+          (state.settings.churches || []).forEach(ch => { if (!isChurchExempt(ch, acc)) txChurchSel.add(ch); });
           syncMultiChurchFields(acc);
         });
         document.getElementById('btn-church-clear').addEventListener('click', () => {
@@ -4274,10 +4340,11 @@
           const next = {
             annualFee: Number(document.getElementById('rate-annual').value) || 0,
             eventShareFee: Number(document.getElementById('rate-event-share').value) || 0,
-            regFeePerPerson: Number(document.getElementById('rate-reg-per-person').value) || 0
+            regFeePerPerson: Number(document.getElementById('rate-reg-per-person').value) || 0,
+            careFee: Number(document.getElementById('rate-care').value) || 0
           };
           const note = document.getElementById('fee-adjust-note').value.trim();
-          const changed = prev.annualFee !== next.annualFee || prev.eventShareFee !== next.eventShareFee || prev.regFeePerPerson !== next.regFeePerPerson;
+          const changed = prev.annualFee !== next.annualFee || prev.eventShareFee !== next.eventShareFee || prev.regFeePerPerson !== next.regFeePerPerson || (Number(prev.careFee) || 0) !== next.careFee;
           if (changed && !note) {
             showToast('費用有變動時，請填寫「調整備註」說明原因');
             document.getElementById('fee-adjust-note').focus();
