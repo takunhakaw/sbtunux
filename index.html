@@ -98,6 +98,47 @@
     }
     @media print { #bottom-nav, #more-sheet, #btn-mobile-fab, #tx-sheet-backdrop { display: none !important; } }
 
+
+    /* ===== 預算表 A4 直式列印版（依 sbtunux 結構） ===== */
+    .rp-sheet { display: none; }
+    .rp-sheet, .rp-sheet * { box-sizing: border-box; }
+    .rp-sheet {
+      font-family: "DFKai-SB", "BiauKai", "標楷體", "Noto Serif TC", "PMingLiU", serif;
+      color: #000000;
+      background: #ffffff;
+    }
+    .rp-title { text-align: center; font-size: 14pt; font-weight: 700; letter-spacing: .8px; margin: 0 0 6px 0; color: #000; }
+    table.rp-table {
+      width: 100%; border-collapse: collapse; table-layout: fixed;
+      border: 2px solid #000; font-size: 9.5pt; line-height: 1.2;
+      break-inside: avoid; page-break-inside: avoid;
+    }
+    table.rp-table th, table.rp-table td {
+      border: 1px solid #000; padding: 3px 4px; vertical-align: middle;
+      height: 23px; overflow-wrap: break-word; color: #000; background-clip: padding-box;
+    }
+    table.rp-table .rp-div { border-right: 2px solid #000 !important; }
+    table.rp-table .rp-hy { background: #9ca3af; font-weight: 700; text-align: center; font-size: 10pt; height: 25px; }
+    table.rp-table .rp-hs { background: #e5e7eb; font-weight: 700; text-align: center; font-size: 9.5pt; height: 25px; }
+    table.rp-table .rp-cat {
+      writing-mode: vertical-rl; text-orientation: upright; text-align: center;
+      font-weight: 700; letter-spacing: 3px; background: #f9fafb; padding: 4px 1px; font-size: 10pt;
+    }
+    table.rp-table .rp-name { text-align: left; padding-left: 6px; font-size: 9.5pt; }
+    table.rp-table .rp-name-compact { text-align: left; padding-left: 4px; font-size: 8.8pt; line-height: 1.1; }
+    table.rp-table .rp-num { text-align: right; font-variant-numeric: tabular-nums; padding-right: 5px; }
+    table.rp-table .rp-sub-label { background: #e5e7eb; font-weight: 700; text-align: right; padding-right: 10px; letter-spacing: 3px; }
+    table.rp-table .rp-sub-num { background: #e5e7eb; font-weight: 700; }
+    table.rp-table tr.rp-sum td { background: #9ca3af; font-weight: 700; height: 24px; }
+    table.rp-table tr.rp-sum td.rp-sum-label { text-align: right; padding-right: 8px; letter-spacing: .5px; }
+    table.rp-table tr.rp-sum td.rp-na { background: #7b818a; }
+    @media print {
+      body.printing-report .rpt-screen { display: none !important; }
+      body.printing-report .rp-sheet { display: block !important; }
+      body.printing-report main { max-width: none !important; width: 100% !important; padding: 0 !important; margin: 0 !important; }
+      body.printing-report #view-report { margin: 0 !important; }
+    }
+
     /* ===== 登入畫面遮罩樣式 ===== */
     #login-overlay {
       position: fixed;
@@ -219,7 +260,7 @@
 
     <!-- TAB 1: Budget & Actual Report -->
     <section id="view-report" class="tab-view space-y-4">
-      <div class="bg-white rounded-xl border border-slate-200 p-4 sm:p-5 shadow-sm">
+      <div class="rpt-screen bg-white rounded-xl border border-slate-200 p-4 sm:p-5 shadow-sm">
         <div class="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-200">
           <div>
             <h2 id="report-main-title" class="text-lg font-bold text-slate-900">Sbtunux 區聯誼會 2025 年度收支預決算暨 2026 年度預算表</h2>
@@ -288,6 +329,9 @@
         <!-- Budget balance check -->
         <div id="budget-check-box" class="mt-5 print-break-inside-avoid"></div>
       </div>
+
+      <!-- A4 直式列印版（僅列印時顯示；內容於列印前由系統資料自動帶入） -->
+      <div id="report-print-sheet" class="rp-sheet" aria-hidden="true"></div>
     </section>
 
     <!-- TAB 2: Journal / Transaction Log -->
@@ -2042,6 +2086,153 @@
         document.getElementById('nav-tx-count').textContent = String(state.transactions.length);
       }
 
+
+      /* ===== 預算表 A4 直式列印版：依 sbtunux 結構帶入資料 ===== */
+      const RP_MIN_SLOTS = { '經常費收入': 9, '專帳收入': 14, '典禮培靈費': 4, '事工費': 4, '事務費': 9, '其他': 4 };
+
+      function buildReportPrintSheet() {
+        const host = document.getElementById('report-print-sheet');
+        if (!host) return;
+        const s = state.settings;
+        const useCorr = state.useCorrected2025;
+        const t = computeTotals();
+        const esc = v => String(v == null ? '' : v).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const numOrBlank = n => (Number(n) ? fmt(n) : '');
+
+        function sideRows(categories, type) {
+          const rows = [];
+          (categories || []).forEach(cat => {
+            const items = state.accounts.filter(a => a.type === type && a.category === cat);
+            const slots = Math.max(items.length, RP_MIN_SLOTS[cat] || 0, 1);
+            const start = rows.length;
+            let b25 = 0, a25 = 0, b26 = 0;
+            for (let i = 0; i < slots; i++) {
+              const it = items[i];
+              if (it) {
+                const v25b = Number(it.b2025) || 0;
+                const v25a = useCorr ? (Number(it.a2025Corr) || 0) : (Number(it.a2025Orig) || 0);
+                const v26b = Number(it.b2026) || 0;
+                b25 += v25b; a25 += v25a; b26 += v26b;
+                rows.push({ cat, kind: 'item', name: it.name, v: [v25b, v25a, v26b] });
+              } else {
+                rows.push({ cat, kind: 'blank' });
+              }
+            }
+            rows.push({ cat, kind: 'sub', v: [b25, a25, b26] });
+            rows[start].catFirst = true;
+            rows[start].catSpan = rows.length - start;
+          });
+          return rows;
+        }
+
+        function padSide(rows, n) {
+          if (n <= 0) return;
+          if (rows.length === 0) {
+            for (let i = 0; i < n; i++) rows.push({ cat: '', kind: 'blank' });
+            rows[0].catFirst = true; rows[0].catSpan = n;
+            return;
+          }
+          const subIdx = rows.length - 1;
+          let first = subIdx;
+          while (first > 0 && !rows[first].catFirst) first--;
+          const cat = rows[subIdx].cat;
+          const blanks = Array.from({ length: n }, () => ({ cat, kind: 'blank' }));
+          rows.splice(subIdx, 0, ...blanks);
+          rows[first].catSpan += n;
+        }
+
+        const L = sideRows(s.incomeCategories, 'income');
+        const R = sideRows(s.expenseCategories, 'expense');
+        padSide(L, R.length - L.length);
+        padSide(R, L.length - R.length);
+
+        function sideCells(r, divider) {
+          if (!r) return '<td></td><td></td><td></td><td></td><td></td>';
+          let h = '';
+          if (r.catFirst) h += `<td rowspan="${r.catSpan}" class="rp-cat">${esc(r.cat)}</td>`;
+          const d = divider ? ' rp-div' : '';
+          if (r.kind === 'sub') {
+            h += '<td class="rp-sub-label">合計</td>';
+            h += `<td class="rp-num rp-sub-num">${fmt(r.v[0])}</td><td class="rp-num rp-sub-num">${fmt(r.v[1])}</td><td class="rp-num rp-sub-num${d}">${fmt(r.v[2])}</td>`;
+          } else if (r.kind === 'item') {
+            const nm = String(r.name || '');
+            h += `<td class="${nm.length > 9 ? 'rp-name-compact' : 'rp-name'}">${esc(nm)}</td>`;
+            h += `<td class="rp-num">${numOrBlank(r.v[0])}</td><td class="rp-num">${numOrBlank(r.v[1])}</td><td class="rp-num${d}">${numOrBlank(r.v[2])}</td>`;
+          } else {
+            h += `<td class="rp-name"></td><td class="rp-num"></td><td class="rp-num"></td><td class="rp-num${d}"></td>`;
+          }
+          return h;
+        }
+
+        let body = '';
+        const total = Math.max(L.length, R.length);
+        for (let i = 0; i < total; i++) {
+          body += `<tr>${sideCells(L[i], true)}${sideCells(R[i], false)}</tr>`;
+        }
+
+        const sumRow = (labelL, vL, labelR, vR, first) => {
+          const cell = (v, extra = '') => v === null
+            ? `<td class="rp-num rp-na${extra}"></td>`
+            : `<td class="rp-num${extra}">${fmt(v)}</td>`;
+          return `<tr class="rp-sum"${first ? ' style="border-top:2px solid #000"' : ''}>
+            <td colspan="2" class="rp-sum-label">${labelL}</td>${cell(vL[0])}${cell(vL[1])}${cell(vL[2], ' rp-div')}
+            <td colspan="2" class="rp-sum-label">${labelR}</td>${cell(vR[0])}${cell(vR[1])}${cell(vR[2])}
+          </tr>`;
+        };
+        // null = 不適用（灰底）
+        body += sumRow('本年度收入總計', [t.inc2025Budget, t.inc2025Actual, t.inc2026Budget],
+                       '本年度支出總計', [t.exp2025Budget, t.exp2025Actual, t.exp2026Budget], true);
+        body += sumRow('上年度結存金', [t.prev2025Carry, t.prev2025Carry, null],
+                       '本年度結存金', [null, t.carry2025, null]);
+        body += sumRow('總額', [t.inc2025Budget + t.prev2025Carry, t.inc2025Grand, t.inc2026Budget],
+                       '總額', [t.exp2025Budget, t.exp2025Actual + t.carry2025, t.exp2026Budget]);
+
+        const by = s.baseYear, cy = s.currentYear;
+        const title = (document.getElementById('report-main-title') || {}).textContent || `${s.orgName} ${by} 年度收支預決算暨 ${cy} 年度預算表`;
+        host.innerHTML = `
+          <h1 class="rp-title">${esc(title)}</h1>
+          <table class="rp-table">
+            <colgroup>
+              <col style="width:3.6%"><col style="width:17.4%"><col style="width:9.6%"><col style="width:9.7%"><col style="width:9.7%">
+              <col style="width:3.6%"><col style="width:17.4%"><col style="width:9.6%"><col style="width:9.7%"><col style="width:9.7%">
+            </colgroup>
+            <thead>
+              <tr>
+                <th colspan="4" class="rp-hy">${by} 年度</th><th class="rp-hy rp-div">${cy} 年度</th>
+                <th colspan="4" class="rp-hy">${by} 年度</th><th class="rp-hy">${cy} 年度</th>
+              </tr>
+              <tr>
+                <th colspan="2" class="rp-hs">科目</th><th class="rp-hs">收入預算</th><th class="rp-hs">收入決算</th><th class="rp-hs rp-div">收入預算</th>
+                <th colspan="2" class="rp-hs">科目</th><th class="rp-hs">支出預算</th><th class="rp-hs">支出決算</th><th class="rp-hs">支出預算</th>
+              </tr>
+            </thead>
+            <tbody>${body}</tbody>
+          </table>`;
+      }
+
+      function preparePrintReport() {
+        if (document.body.classList.contains('printing-receipt')) return;
+        const v = document.getElementById('view-report');
+        if (!v || v.classList.contains('hidden')) return;
+        buildReportPrintSheet();
+        document.body.classList.add('printing-report');
+        if (!document.getElementById('rp-page-style')) {
+          const st = document.createElement('style');
+          st.id = 'rp-page-style';
+          st.textContent = '@page { size: A4 portrait; margin: 10mm; }';
+          document.head.appendChild(st);
+        }
+      }
+
+      function cleanupPrintReport() {
+        document.body.classList.remove('printing-report');
+        const st = document.getElementById('rp-page-style');
+        if (st) st.remove();
+      }
+
+      window.addEventListener('beforeprint', preparePrintReport);
+      window.addEventListener('afterprint', cleanupPrintReport);
+
       function renderReportTables() {
         const useCorr = state.useCorrected2025;
         const totals = computeTotals();
@@ -3460,7 +3651,7 @@
         });
 
         // Print & Export Report CSV
-        document.getElementById('btn-print-report').addEventListener('click', () => window.print());
+        document.getElementById('btn-print-report').addEventListener('click', () => { preparePrintReport(); window.print(); });
         document.getElementById('btn-toggle-report-lock').addEventListener('click', () => {
           reportLocked = !reportLocked;
           applyReportLock();
