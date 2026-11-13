@@ -529,6 +529,14 @@
             <label for="event-inline-name" class="block text-xs font-medium text-slate-600 mb-1">快速新增活動名稱</label>
             <input id="event-inline-name" type="text" required placeholder="例：2026 聖誕聯合晚會、暑期兒主營" class="w-full rounded-lg border border-slate-300 px-3 py-1.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" />
           </div>
+          <div>
+            <label for="event-inline-date" class="block text-xs font-medium text-slate-600 mb-1">活動日期（選填）</label>
+            <input id="event-inline-date" type="date" class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" />
+          </div>
+          <div class="min-w-[160px]">
+            <label for="event-inline-location" class="block text-xs font-medium text-slate-600 mb-1">活動地點（選填）</label>
+            <input id="event-inline-location" type="text" placeholder="例：高遶教會" class="w-full rounded-lg border border-slate-300 px-3 py-1.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" />
+          </div>
           <button type="submit" class="px-4 py-1.5 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 transition-colors">
             ＋ 建立活動
           </button>
@@ -564,6 +572,9 @@
               <p id="event-detail-subtitle" class="text-xs text-slate-500 mt-0.5">選擇後將顯示該活動的收支統計與逐筆明細</p>
             </div>
             <div class="flex items-center gap-2 no-print">
+              <button id="btn-edit-event" type="button" class="hidden px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-700 text-xs sm:text-sm font-medium hover:bg-slate-50">
+                ✏️ 編輯活動資料
+              </button>
               <button id="btn-add-tx-for-event" type="button" class="hidden px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs sm:text-sm font-medium hover:bg-emerald-700">
                 ＋ 記一筆到此活動
               </button>
@@ -571,6 +582,37 @@
                 匯出活動 CSV
               </button>
             </div>
+          </div>
+
+          <!-- Event edit box -->
+          <div id="event-edit-box" class="hidden rounded-xl border border-amber-200 bg-amber-50/60 p-3.5 space-y-2.5 no-print">
+            <div class="text-xs sm:text-sm font-bold text-amber-900">修改活動資料</div>
+            <form id="event-edit-form" class="grid grid-cols-2 gap-2.5">
+              <div class="col-span-2">
+                <label for="ev-edit-name" class="block text-[11px] font-medium text-slate-600 mb-0.5">活動名稱（修改後，相關收支明細會一併更新）</label>
+                <input id="ev-edit-name" type="text" required class="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-sm" />
+              </div>
+              <div>
+                <label for="ev-edit-date" class="block text-[11px] font-medium text-slate-600 mb-0.5">活動開始日期</label>
+                <input id="ev-edit-date" type="date" class="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-sm" />
+              </div>
+              <div>
+                <label for="ev-edit-end" class="block text-[11px] font-medium text-slate-600 mb-0.5">活動結束日期（選填，單日可留空）</label>
+                <input id="ev-edit-end" type="date" class="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-sm" />
+              </div>
+              <div>
+                <label for="ev-edit-time" class="block text-[11px] font-medium text-slate-600 mb-0.5">活動時間（選填）</label>
+                <input id="ev-edit-time" type="text" placeholder="例：09:00–17:00" class="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-sm" />
+              </div>
+              <div>
+                <label for="ev-edit-location" class="block text-[11px] font-medium text-slate-600 mb-0.5">活動地點（選填）</label>
+                <input id="ev-edit-location" type="text" placeholder="例：高遶教會" class="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-sm" />
+              </div>
+              <div class="col-span-2 flex justify-end gap-2">
+                <button id="btn-event-edit-cancel" type="button" class="px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-xs sm:text-sm font-medium text-slate-700 hover:bg-slate-50">取消</button>
+                <button type="submit" class="px-4 py-1.5 rounded-lg bg-amber-600 text-white text-xs sm:text-sm font-semibold hover:bg-amber-700">儲存修改</button>
+              </div>
+            </form>
           </div>
 
           <!-- Event KPI Cards -->
@@ -681,14 +723,15 @@
             <p class="text-xs text-slate-500 mt-0.5">勾選出席幹部後會自動計算應發會議費，並可一鍵登錄至流水帳「會議費」科目。</p>
           </div>
           <form id="meeting-form" class="mt-4 space-y-3.5">
+            <div id="mtg-edit-banner" class="hidden rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-900"></div>
             <div class="grid grid-cols-2 gap-3">
               <div>
                 <label for="mtg-date" class="block text-xs font-medium text-slate-600 mb-1">會議日期</label>
                 <input id="mtg-date" type="date" required class="w-full rounded-lg border border-slate-300 px-3 py-1.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" />
               </div>
               <div>
-                <label for="mtg-wallet" class="block text-xs font-medium text-slate-600 mb-1">發放帳戶</label>
-                <select id="mtg-wallet" class="w-full rounded-lg border border-slate-300 px-3 py-1.5 text-sm bg-white focus:ring-2 focus:ring-emerald-500 outline-none"></select>
+                <label for="mtg-location" class="block text-xs font-medium text-slate-600 mb-1">會議地點</label>
+                <input id="mtg-location" type="text" placeholder="例：高遶教會" class="w-full rounded-lg border border-slate-300 px-3 py-1.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" />
               </div>
             </div>
             <div class="grid grid-cols-3 gap-3">
@@ -732,11 +775,14 @@
             </div>
 
             <div class="space-y-2 pt-1">
-              <button type="submit" class="w-full py-2.5 px-4 rounded-xl bg-emerald-600 text-white font-semibold text-sm hover:bg-emerald-700 transition-colors shadow-sm">
+              <button type="submit" id="btn-mtg-submit" class="w-full py-2.5 px-4 rounded-xl bg-emerald-600 text-white font-semibold text-sm hover:bg-emerald-700 transition-colors shadow-sm">
                 儲存點名並入帳會議費
               </button>
               <button id="btn-mtg-save-only" type="button" class="w-full py-2 px-4 rounded-xl border border-slate-300 bg-white text-slate-700 font-medium text-xs sm:text-sm hover:bg-slate-50 transition-colors">
                 僅儲存點名紀錄（不入帳）
+              </button>
+              <button id="btn-mtg-cancel-edit" type="button" class="hidden w-full py-2 px-4 rounded-xl border border-amber-300 bg-white text-amber-800 font-medium text-xs sm:text-sm hover:bg-amber-50 transition-colors">
+                取消修改
               </button>
             </div>
           </form>
@@ -1253,6 +1299,7 @@
         },
         feeHistory: [],
         exemptChurches: [],
+        eventInfo: {},
         accountantName: '',
         treasurerName: '',
         presidentName: '',
@@ -1315,6 +1362,7 @@
       let pendingModalAction = null;
       let selectedEventForDetail = null;
       let reportLocked = true;
+      let eventEditing = null;
       let txChurchSel = new Set();
       let txChurchSelAcc = '';
 
@@ -1548,6 +1596,18 @@
         if (!options.skipAutoSync) {
           scheduleAutoCloudSync();
         }
+      }
+
+      function eventInfoText(name) {
+        const info = (state.settings.eventInfo || {})[name];
+        if (!info) return '';
+        const parts = [];
+        let d = info.date || '';
+        if (info.endDate && info.endDate !== info.date) d += (d ? ' ~ ' : '') + info.endDate;
+        if (d) parts.push('📅 ' + d);
+        if (info.time) parts.push('🕐 ' + info.time);
+        if (info.location) parts.push('📍 ' + info.location);
+        return parts.join('　');
       }
 
       function isMultiChurchAccount(acc) {
@@ -1873,6 +1933,7 @@
             <td class="px-3 py-2 whitespace-nowrap text-slate-600">${m.date}</td>
             <td class="px-3 py-2 font-medium text-slate-900">
               <div>${m.title}</div>
+              ${m.location ? `<div class="text-[11px] font-normal text-slate-500">📍 ${m.location}</div>` : ''}
               ${m.txId ? '<span class="inline-block mt-0.5 px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px]">已入帳會議費</span>' : '<span class="inline-block mt-0.5 px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 text-[10px]">僅點名未入帳</span>'}
             </td>
             <td class="px-3 py-2 text-xs text-slate-700">
@@ -1887,6 +1948,7 @@
               <div class="text-[11px] text-slate-400">${(m.attendees || []).length}人 × $${fmt(m.feePerPerson)}</div>
             </td>
             <td class="px-3 py-2 text-center no-print whitespace-nowrap space-x-1">
+              <button data-mtg-edit="${m.id}" class="px-2 py-1 rounded text-xs bg-emerald-50 text-emerald-800 hover:bg-emerald-100 font-medium">修改</button>
               <button data-mtg-receipt="${m.id}" class="px-2 py-1 rounded text-xs bg-slate-100 text-slate-700 hover:bg-slate-200 font-medium">領據清冊</button>
               <button data-mtg-del="${m.id}" class="px-2 py-1 rounded text-xs text-rose-600 hover:bg-rose-100">刪除</button>
             </td>
@@ -2152,6 +2214,7 @@
                   return;
                 }
                 state.settings.events = state.settings.events.filter(item => item !== ev);
+                if (state.settings.eventInfo) delete state.settings.eventInfo[ev];
                 if (selectedEventForDetail === ev) selectedEventForDetail = null;
                 saveState();
                 populateEventControls();
@@ -2255,11 +2318,12 @@
             <td class="px-2.5 py-2.5 text-slate-900">
               <div>${label}</div>
               <div class="text-xs font-normal text-slate-400">${txs.length} 筆明細</div>
+              ${evName && eventInfoText(evName) ? `<div class="text-[11px] font-normal text-slate-500">${eventInfoText(evName)}</div>` : ''}
             </td>
             <td class="px-2 py-2.5 text-right tabular-nums text-emerald-700">${fmt(inc)}</td>
             <td class="px-2 py-2.5 text-right tabular-nums text-rose-700">${fmt(exp)}</td>
             <td class="px-2 py-2.5 text-right tabular-nums font-bold ${net >= 0 ? 'text-emerald-700' : 'text-rose-600'}">${net >= 0 ? '+' : ''}${fmt(net)}</td>
-            <td class="px-1 py-2.5 text-center no-print">${evName ? `<button type="button" data-del-event="${events.indexOf(evName)}" class="px-1.5 py-0.5 rounded text-[11px] text-rose-600 hover:bg-rose-100">刪除</button>` : ''}</td>
+            <td class="px-1 py-2.5 text-center no-print">${evName ? `<button type="button" data-edit-event="${events.indexOf(evName)}" class="px-1.5 py-0.5 rounded text-[11px] text-slate-600 hover:bg-slate-200">編輯</button><button type="button" data-del-event="${events.indexOf(evName)}" class="px-1.5 py-0.5 rounded text-[11px] text-rose-600 hover:bg-rose-100">刪除</button>` : ''}</td>
           `;
           tbody.appendChild(tr);
         });
@@ -2279,6 +2343,8 @@
           if (evTxBox) evTxBox.classList.add('hidden');
           addBtn.classList.add('hidden');
           expBtn.classList.add('hidden');
+          const eb0 = document.getElementById('event-edit-box'); if (eb0) eb0.classList.add('hidden');
+          const ebtn0 = document.getElementById('btn-edit-event'); if (ebtn0) ebtn0.classList.add('hidden');
           dBody.innerHTML = '<tr><td colspan="6" class="px-3 py-10 text-center text-slate-400">請從左側點選任一活動以檢視收支明細。</td></tr>';
           return;
         }
@@ -2293,7 +2359,7 @@
         const dNet = dInc - dExp;
 
         document.getElementById('event-detail-title').textContent = `${detailLabel} — 收支狀況`;
-        document.getElementById('event-detail-subtitle').textContent = `共 ${detailTxs.length} 筆收支紀錄`;
+        document.getElementById('event-detail-subtitle').textContent = `共 ${detailTxs.length} 筆收支紀錄` + (selectedEventForDetail && eventInfoText(selectedEventForDetail) ? '　｜　' + eventInfoText(selectedEventForDetail) : '');
         document.getElementById('ev-kpi-inc').textContent = '$' + fmt(dInc);
         document.getElementById('ev-kpi-exp').textContent = '$' + fmt(dExp);
         const netEl = document.getElementById('ev-kpi-net');
@@ -2303,6 +2369,10 @@
         kpiRow.classList.remove('hidden');
         addBtn.classList.remove('hidden');
         expBtn.classList.remove('hidden');
+        const editBoxEl = document.getElementById('event-edit-box');
+        if (editBoxEl) editBoxEl.classList.toggle('hidden', !(eventEditing !== null && eventEditing === selectedEventForDetail));
+        const editBtnEl = document.getElementById('btn-edit-event');
+        if (editBtnEl) editBtnEl.classList.toggle('hidden', !selectedEventForDetail);
         renderEventChurchFeesBox(selectedEventForDetail);
         const evTxBox = document.getElementById('event-quick-tx-box');
         if (evTxBox) evTxBox.classList.remove('hidden');
@@ -3699,7 +3769,15 @@
             return;
           }
           state.settings.events.push(name);
+          const inDate = document.getElementById('event-inline-date').value;
+          const inLoc = document.getElementById('event-inline-location').value.trim();
+          if (inDate || inLoc) {
+            if (!state.settings.eventInfo) state.settings.eventInfo = {};
+            state.settings.eventInfo[name] = { date: inDate, endDate: '', time: '', location: inLoc };
+          }
           document.getElementById('event-inline-name').value = '';
+          document.getElementById('event-inline-date').value = '';
+          document.getElementById('event-inline-location').value = '';
           selectedEventForDetail = name;
           saveState();
           populateEventControls();
@@ -3707,10 +3785,70 @@
           showToast(`已建立活動「${name}」`);
         });
 
+        function openEventEdit(name) {
+          const info = (state.settings.eventInfo || {})[name] || {};
+          document.getElementById('ev-edit-name').value = name;
+          document.getElementById('ev-edit-date').value = info.date || '';
+          document.getElementById('ev-edit-end').value = info.endDate || '';
+          document.getElementById('ev-edit-time').value = info.time || '';
+          document.getElementById('ev-edit-location').value = info.location || '';
+          eventEditing = name;
+          selectedEventForDetail = name;
+          renderEventsView();
+          const box = document.getElementById('event-edit-box');
+          if (box && box.scrollIntoView) box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+        document.getElementById('btn-edit-event').addEventListener('click', () => {
+          if (selectedEventForDetail) openEventEdit(selectedEventForDetail);
+        });
+        document.getElementById('btn-event-edit-cancel').addEventListener('click', () => {
+          eventEditing = null;
+          renderEventsView();
+        });
+        document.getElementById('event-edit-form').addEventListener('submit', (e) => {
+          e.preventDefault();
+          const old = eventEditing;
+          if (old === null) return;
+          const events = state.settings.events || [];
+          const idx = events.indexOf(old);
+          if (idx < 0) { eventEditing = null; renderEventsView(); return; }
+          const newName = document.getElementById('ev-edit-name').value.trim();
+          if (!newName) { showToast('活動名稱不可空白'); return; }
+          if (newName !== old && events.includes(newName)) { showToast('已有相同名稱的活動'); return; }
+          if (!state.settings.eventInfo) state.settings.eventInfo = {};
+          if (newName !== old) {
+            events[idx] = newName;
+            state.transactions.forEach(t => {
+              if ((t.eventName || '') === old) {
+                t.eventName = newName;
+                if (t.memo) t.memo = t.memo.split(old).join(newName);
+              }
+            });
+            delete state.settings.eventInfo[old];
+            selectedEventForDetail = newName;
+          }
+          state.settings.eventInfo[newName] = {
+            date: document.getElementById('ev-edit-date').value,
+            endDate: document.getElementById('ev-edit-end').value,
+            time: document.getElementById('ev-edit-time').value.trim(),
+            location: document.getElementById('ev-edit-location').value.trim()
+          };
+          eventEditing = null;
+          saveState();
+          populateEventControls();
+          renderAll();
+          showToast(newName !== old ? `已修改活動資料，並同步更新「${old}」的收支明細` : '已修改活動資料');
+        });
         document.getElementById('event-search-input').addEventListener('input', renderEventsView);
         document.getElementById('btn-print-events').addEventListener('click', () => window.print());
 
         document.getElementById('events-summary-body').addEventListener('click', (e) => {
+          const editRowBtn = e.target.closest('button[data-edit-event]');
+          if (editRowBtn) {
+            const nm = (state.settings.events || [])[Number(editRowBtn.dataset.editEvent)];
+            if (nm !== undefined) openEventEdit(nm);
+            return;
+          }
           const delBtn = e.target.closest('button[data-del-event]');
           if (delBtn) {
             const name = (state.settings.events || [])[Number(delBtn.dataset.delEvent)];
@@ -3720,6 +3858,8 @@
               ? `確定要刪除活動「${name}」嗎？該活動底下的 ${n} 筆收支傳票不會被刪除，但會改歸為「一般會務（未指定活動）」。`
               : `確定要刪除活動「${name}」嗎？`, () => {
               state.settings.events = state.settings.events.filter(x => x !== name);
+              if (state.settings.eventInfo) delete state.settings.eventInfo[name];
+              if (eventEditing === name) eventEditing = null;
               state.transactions.forEach(t => { if ((t.eventName || '') === name) t.eventName = ''; });
               if (selectedEventForDetail === name) selectedEventForDetail = null;
               saveState();
@@ -3998,11 +4138,68 @@
           document.getElementById('photo-lightbox').classList.add('hidden');
         });
 
+        let mtgEditId = '';
+
+        function resetMeetingEditUI() {
+          mtgEditId = '';
+          const banner = document.getElementById('mtg-edit-banner');
+          if (banner) banner.classList.add('hidden');
+          const mainBtn = document.getElementById('btn-mtg-submit');
+          if (mainBtn) mainBtn.textContent = '儲存點名並入帳會議費';
+          const saveOnly = document.getElementById('btn-mtg-save-only');
+          if (saveOnly) { saveOnly.textContent = '僅儲存點名紀錄（不入帳）'; saveOnly.classList.remove('hidden'); }
+          const cancelBtn = document.getElementById('btn-mtg-cancel-edit');
+          if (cancelBtn) cancelBtn.classList.add('hidden');
+        }
+
+        function clearMeetingForm() {
+          document.getElementById('mtg-title').value = '';
+          document.getElementById('mtg-location').value = '';
+          clearMeetingPhotoInput();
+          document.querySelectorAll('.mtg-attend-cb').forEach(cb => { cb.checked = false; });
+          updateMeetingSummary();
+        }
+
+        function openMeetingEdit(id) {
+          const m = (state.meetings || []).find(x => x.id === id);
+          if (!m) return;
+          mtgEditId = id;
+          document.getElementById('mtg-date').value = m.date || '';
+          document.getElementById('mtg-title').value = m.title || '';
+          document.getElementById('mtg-location').value = m.location || '';
+          document.getElementById('mtg-fee').value = Number(m.feePerPerson) || 0;
+          const roles = (m.attendees || []).map(a => a.role);
+          document.querySelectorAll('.mtg-attend-cb').forEach(cb => { cb.checked = roles.includes(cb.value); });
+          pendingMeetingPhotoDataUrl = m.photoDataUrl || '';
+          const fileInp = document.getElementById('mtg-photo');
+          if (fileInp) fileInp.value = '';
+          const wrap = document.getElementById('mtg-photo-preview-wrap');
+          if (pendingMeetingPhotoDataUrl) {
+            document.getElementById('mtg-photo-preview').src = pendingMeetingPhotoDataUrl;
+            wrap.classList.remove('hidden');
+          } else {
+            wrap.classList.add('hidden');
+          }
+          const hasTx = Boolean(m.txId) && state.transactions.some(t => t.id === m.txId);
+          const banner = document.getElementById('mtg-edit-banner');
+          banner.textContent = `正在修改：${m.title}（${m.date}）` + (hasTx ? '　※ 儲存後會同步更新已入帳的會議費傳票' : '');
+          banner.classList.remove('hidden');
+          document.getElementById('btn-mtg-submit').textContent = hasTx ? '儲存修改（同步更新會議費）' : '儲存修改並入帳會議費';
+          const saveOnly = document.getElementById('btn-mtg-save-only');
+          saveOnly.textContent = '僅儲存修改（不入帳）';
+          saveOnly.classList.toggle('hidden', hasTx);
+          document.getElementById('btn-mtg-cancel-edit').classList.remove('hidden');
+          updateMeetingSummary();
+          const form = document.getElementById('meeting-form');
+          if (form && form.scrollIntoView) form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
         function submitMeeting(recordExpense) {
           const date = document.getElementById('mtg-date').value;
           const title = document.getElementById('mtg-title').value.trim();
           const fee = Number(document.getElementById('mtg-fee').value) || 0;
-          const wallet = document.getElementById('mtg-wallet').value || state.settings.wallets[0] || '現金';
+          const location = document.getElementById('mtg-location').value.trim();
+          const wallet = state.settings.wallets[0] || '現金';
           if (!date || !title) {
             showToast('請填寫會議日期與會議名稱');
             return;
@@ -4018,32 +4215,53 @@
             name: (off[role] || (role === '區會長' ? state.settings.presidentName : role === '會計' ? state.settings.accountantName : role === '出納' ? state.settings.treasurerName : '') || '').trim()
           }));
           const totalFee = attendees.length * fee;
-          let txId = '';
-          if (recordExpense && totalFee > 0) {
+          const namesList = attendees.map(a => a.name ? `${a.role}(${a.name})` : a.role).join('、');
+          const txNote = (location ? `地點：${location}｜` : '') + `出席：${namesList}`;
+          const txMemo = `${title}（會議費 ${attendees.length}人 × $${fmt(fee)}）`;
+          const txParty = `${attendees.length}位幹部`;
+
+          function createMeetingTx() {
             const meetingAcc = state.accounts.find(a => a.type === 'expense' && a.name.includes('會議費')) || state.accounts.find(a => a.type === 'expense');
-            if (meetingAcc) {
-              txId = 'tx-' + Date.now();
-              const namesList = attendees.map(a => a.name ? `${a.role}(${a.name})` : a.role).join('、');
-              state.transactions.push({
-                id: txId,
-                date,
-                voucher: suggestNextVoucher(),
-                type: 'expense',
-                wallet,
-                accountId: meetingAcc.id,
-                eventName: '',
-                amount: totalFee,
-                party: `${attendees.length}位幹部`,
-                memo: `${title}（會議費 ${attendees.length}人 × $${fmt(fee)}）`,
-                note: `出席：${namesList}`
-              });
-            }
+            if (!meetingAcc) return '';
+            const id = 'tx-' + Date.now();
+            state.transactions.push({
+              id, date, voucher: suggestNextVoucher(), type: 'expense', wallet,
+              accountId: meetingAcc.id, eventName: '', amount: totalFee,
+              party: txParty, memo: txMemo, note: txNote
+            });
+            return id;
           }
+
+          if (mtgEditId) {
+            const m = (state.meetings || []).find(x => x.id === mtgEditId);
+            if (!m) { resetMeetingEditUI(); return; }
+            const tx = m.txId ? state.transactions.find(t => t.id === m.txId) : null;
+            if (!tx) m.txId = '';
+            Object.assign(m, { date, title, feePerPerson: fee, location, attendees, totalFee, photoDataUrl: pendingMeetingPhotoDataUrl });
+            let msg = '已更新會議點名紀錄';
+            if (tx) {
+              Object.assign(tx, { date, amount: totalFee, party: txParty, memo: txMemo, note: txNote });
+              msg = '已更新會議紀錄，並同步修正已入帳的會議費傳票';
+            } else if (recordExpense && totalFee > 0) {
+              m.txId = createMeetingTx();
+              if (m.txId) msg = `已更新會議紀錄並入帳會議費 $${fmt(totalFee)}`;
+            }
+            clearMeetingForm();
+            resetMeetingEditUI();
+            saveState();
+            renderAll();
+            showToast(msg);
+            return;
+          }
+
+          let txId = '';
+          if (recordExpense && totalFee > 0) txId = createMeetingTx();
           if (!Array.isArray(state.meetings)) state.meetings = [];
           state.meetings.push({
             id: 'mtg-' + Date.now(),
             date,
             title,
+            location,
             feePerPerson: fee,
             wallet,
             attendees,
@@ -4051,13 +4269,16 @@
             txId,
             photoDataUrl: pendingMeetingPhotoDataUrl
           });
-          document.getElementById('mtg-title').value = '';
-          clearMeetingPhotoInput();
-          document.querySelectorAll('.mtg-attend-cb').forEach(cb => { cb.checked = false; });
+          clearMeetingForm();
           saveState();
           renderAll();
           showToast(txId ? `已儲存點名並入帳會議費 $${fmt(totalFee)}` : '已儲存會議點名紀錄');
         }
+
+        document.getElementById('btn-mtg-cancel-edit').addEventListener('click', () => {
+          clearMeetingForm();
+          resetMeetingEditUI();
+        });
 
         document.getElementById('mtg-roster').addEventListener('change', updateMeetingSummary);
         document.getElementById('mtg-fee').addEventListener('input', updateMeetingSummary);
@@ -4081,7 +4302,7 @@
           const s = state.settings;
           const off = s.officers || {};
           document.getElementById('rcp-org-title').textContent = `${s.orgName} — 出席簽到暨會議費領據清冊`;
-          document.getElementById('rcp-meta').textContent = `會議名稱：${m.title}　｜　日期：${m.date}　｜　發放帳戶：${m.wallet || '現金'}　｜　標準：$${fmt(m.feePerPerson)} / 人`;
+          document.getElementById('rcp-meta').textContent = `會議名稱：${m.title}　｜　日期：${m.date}　｜　地點：${m.location || '—'}　｜　標準：$${fmt(m.feePerPerson)} / 人`;
 
           document.getElementById('rcp-thead').innerHTML = `
             <tr class="bg-slate-100 text-slate-800">
@@ -4265,6 +4486,11 @@
         });
 
         document.getElementById('meetings-history-body').addEventListener('click', (e) => {
+          const mtgEditBtn = e.target.closest('button[data-mtg-edit]');
+          if (mtgEditBtn) {
+            openMeetingEdit(mtgEditBtn.dataset.mtgEdit);
+            return;
+          }
           const photoBtn = e.target.closest('button[data-mtg-photo]');
           if (photoBtn) {
             const m = (state.meetings || []).find(item => item.id === photoBtn.dataset.mtgPhoto);
