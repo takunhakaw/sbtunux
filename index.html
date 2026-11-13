@@ -161,6 +161,9 @@
     table.ed-table td.ed-empty { color: #444; padding: 6px; }
     table.ed-table tr.ed-subtotal td { background: #e5e7eb; font-weight: 700; }
     .ed-cat-total { font-weight: 700; text-align: right; margin: -2px 0 8px 0; padding: 3px 6px; border: 1px solid #000; background: #f3f4f6; }
+    .ed-chart { border: 1px solid #000; padding: 2px 4px; margin: 0 0 8px 0; break-inside: avoid; page-break-inside: avoid; }
+    .ed-chart svg { width: 100%; height: auto; display: block; }
+    table.ed-sum td, table.ed-sum th { padding: 0 4px; font-size: 9pt; line-height: 1.15; }
     .ed-sec { font-size: 12pt; font-weight: 700; margin: 8px 0 4px 0; padding-left: 6px; border-left: 5px solid #000; }
     table.ed-table td.ed-catc { text-align: center; font-weight: 700; background: #f9fafb; }
     table.ed-table tr.ed-grandrow td { background: #9ca3af; font-weight: 700; }
@@ -3274,6 +3277,63 @@
 
 
       /* ===== 支出明細表（附件）A4 橫式列印版 ===== */
+
+      /* 列印用精簡折線圖（固定高度、寬度 100%） */
+      function buildExpDetailPrintChart(data, by, cy) {
+        if (!data.length) return '';
+        const W = 1000, H = 176, padL = 60, padR = 44, padT = 20, padB = 66;
+        const plotW = W - padL - padR, plotH = H - padT - padB, n = data.length;
+        const series = [
+          { key: 'a25', label: `${by} 決算`, color: '#64748b', axis: 'L', dash: '6 3' },
+          { key: 'b26', label: `${cy} 預算`, color: '#2563eb', axis: 'L', dash: '' },
+          { key: 'a26', label: `${cy} 實際`, color: '#e11d48', axis: 'L', dash: '' },
+          { key: 'rate', label: '執行率 %（右軸）', color: '#d97706', axis: 'R', dash: '2 3' }
+        ].filter(sr => !expChartHidden[sr.key]);
+        const lMax = niceMax(Math.max(1, ...data.flatMap(d => [d.a25, d.b26, d.a26])));
+        const rMax = niceMax(Math.max(100, ...data.map(d => d.rate == null ? 0 : d.rate)));
+        const xs = i => padL + (i + 0.5) * plotW / n;
+        const yL = v => padT + plotH - (v / lMax) * plotH;
+        const yR = v => padT + plotH - (v / rMax) * plotH;
+        let g = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="font-family:inherit">`;
+        // 圖例
+        let lx = padL;
+        series.forEach(sr => {
+          g += `<line x1="${lx}" x2="${lx + 22}" y1="11" y2="11" stroke="${sr.color}" stroke-width="2.2" ${sr.dash ? `stroke-dasharray="${sr.dash}"` : ''}/>`;
+          g += `<text x="${lx + 27}" y="15" font-size="11" fill="#000">${sr.label}</text>`;
+          lx += 27 + sr.label.length * 12 + 22;
+        });
+        for (let k = 0; k <= 4; k++) {
+          const y = padT + plotH - (k / 4) * plotH;
+          g += `<line x1="${padL}" x2="${W - padR}" y1="${y}" y2="${y}" stroke="#d1d5db" stroke-width="0.8"/>`;
+          g += `<text x="${padL - 5}" y="${y + 3.5}" text-anchor="end" font-size="10" fill="#000">${fmt(Math.round(lMax * k / 4))}</text>`;
+          g += `<text x="${W - padR + 5}" y="${y + 3.5}" font-size="10" fill="#92400e">${Math.round(rMax * k / 4)}%</text>`;
+        }
+        g += `<line x1="${padL}" x2="${padL}" y1="${padT}" y2="${padT + plotH}" stroke="#000"/><line x1="${W - padR}" x2="${W - padR}" y1="${padT}" y2="${padT + plotH}" stroke="#000"/>`;
+        g += `<line x1="${padL}" x2="${W - padR}" y1="${padT + plotH}" y2="${padT + plotH}" stroke="#000"/>`;
+        data.forEach((d, i) => {
+          const x = xs(i), y = padT + plotH + 10;
+          const nm = d.name.length > 8 ? d.name.slice(0, 7) + '…' : d.name;
+          g += `<text x="${x}" y="${y}" text-anchor="end" font-size="10" fill="#000" transform="rotate(-40 ${x} ${y})">${String(nm).replace(/&/g, '&amp;').replace(/</g, '&lt;')}</text>`;
+        });
+        series.forEach(sr => {
+          const yf = sr.axis === 'L' ? yL : yR;
+          let path = '', pen = false;
+          data.forEach((d, i) => {
+            const v = d[sr.key];
+            if (v == null) { pen = false; return; }
+            path += (pen ? 'L' : 'M') + xs(i).toFixed(1) + ' ' + yf(v).toFixed(1) + ' ';
+            pen = true;
+          });
+          g += `<path d="${path}" fill="none" stroke="${sr.color}" stroke-width="${sr.axis === 'R' ? 1.4 : 2}" ${sr.dash ? `stroke-dasharray="${sr.dash}"` : ''} stroke-linejoin="round"/>`;
+          data.forEach((d, i) => {
+            const v = d[sr.key];
+            if (v == null) return;
+            g += `<circle cx="${xs(i).toFixed(1)}" cy="${yf(v).toFixed(1)}" r="${sr.axis === 'R' ? 2 : 2.8}" fill="${sr.color}"/>`;
+          });
+        });
+        return g + '</svg>';
+      }
+
       function buildExpDetailPrintSheet() {
         const host = document.getElementById('expdetail-print-sheet');
         if (!host) return;
@@ -3338,19 +3398,27 @@
             const a26 = getActual2026ByAccountId(a.id);
             const n = state.transactions.filter(t => t.accountId === a.id).length + (Number(a.directActual) ? 1 : 0);
             cA25 += a25; cB26 += b26; cA26 += a26; cN += n;
-            sumRows += `<tr>${idx === 0 ? `<td rowspan="${accs.length + 1}" class="ed-catc">${esc(cat)}</td>` : ''}<td>${esc(a.name)}</td><td class="r">${fmt(a25)}</td><td class="r">${fmt(b26)}</td><td class="r">${fmt(a26)}</td><td class="r">${fmt(b26 - a26)}</td><td class="r">${rateOf(b26, a26)}</td><td class="c">${n}</td></tr>`;
+            sumRows += `<tr>${idx === 0 ? `<td rowspan="${accs.length + 1}" class="ed-catc">${esc(cat)}</td>` : ''}<td>${esc(a.name)}</td><td class="r">${fmt(a25)}</td><td class="r">${fmt(b26)}</td><td class="r">${fmt(a26)}</td><td class="r">${fmt(b26 - a26)}</td><td class="r">${rateOf(b26, a26)}</td></tr>`;
           });
-          sumRows += `<tr class="ed-subtotal"><td style="text-align:right;padding-right:10px;letter-spacing:3px">合計</td><td class="r">${fmt(cA25)}</td><td class="r">${fmt(cB26)}</td><td class="r">${fmt(cA26)}</td><td class="r">${fmt(cB26 - cA26)}</td><td class="r">${rateOf(cB26, cA26)}</td><td class="c">${cN}</td></tr>`;
+          sumRows += `<tr class="ed-subtotal"><td style="text-align:right;padding-right:10px;letter-spacing:3px">合計</td><td class="r">${fmt(cA25)}</td><td class="r">${fmt(cB26)}</td><td class="r">${fmt(cA26)}</td><td class="r">${fmt(cB26 - cA26)}</td><td class="r">${rateOf(cB26, cA26)}</td></tr>`;
           gA25 += cA25; gB26 += cB26; gA26 += cA26; gN += cN;
         });
-        sumRows += `<tr class="ed-grandrow"><td colspan="2" style="text-align:right;padding-right:10px;letter-spacing:3px">支出總計</td><td class="r">${fmt(gA25)}</td><td class="r">${fmt(gB26)}</td><td class="r">${fmt(gA26)}</td><td class="r">${fmt(gB26 - gA26)}</td><td class="r">${rateOf(gB26, gA26)}</td><td class="c">${gN}</td></tr>`;
+        sumRows += `<tr class="ed-grandrow"><td colspan="2" style="text-align:right;padding-right:10px;letter-spacing:3px">支出總計</td><td class="r">${fmt(gA25)}</td><td class="r">${fmt(gB26)}</td><td class="r">${fmt(gA26)}</td><td class="r">${fmt(gB26 - gA26)}</td><td class="r">${rateOf(gB26, gA26)}</td></tr>`;
         const by = s.baseYear, cy = s.currentYear;
-        const summaryHtml = sumRows.indexOf('<td class="ed-catc"') < 0 && !gN && !gB26 && !gA25 && !gA26 && cats.every(c => !state.accounts.some(a => a.type === 'expense' && a.category === c))
-          ? '' : `
-          <div class="ed-sec">一、支出科目彙總表</div>
-          <table class="ed-table">
-            <colgroup><col style="width:11%"><col style="width:23%"><col style="width:12%"><col style="width:12%"><col style="width:12%"><col style="width:12%"><col style="width:9%"><col style="width:9%"></colgroup>
-            <thead><tr><th class="ed-colh">大分類</th><th class="ed-colh">支出科目</th><th class="ed-colh">${by}年決算</th><th class="ed-colh">${cy}年預算</th><th class="ed-colh">${cy}年決算</th><th class="ed-colh">預算差額</th><th class="ed-colh">執行率</th><th class="ed-colh">明細筆數</th></tr></thead>
+        const chartData = [];
+        cats.forEach(cat => state.accounts.filter(a => a.type === 'expense' && a.category === cat).forEach(a => {
+          const a25 = useCorr ? (Number(a.a2025Corr) || 0) : (Number(a.a2025Orig) || 0);
+          const b26 = Number(a.b2026) || 0;
+          const a26 = getActual2026ByAccountId(a.id);
+          chartData.push({ name: a.name, a25, b26, a26, rate: b26 > 0 ? (a26 / b26) * 100 : null });
+        }));
+        const summaryHtml = !chartData.length ? '' : `
+          <div class="ed-sec">一、支出科目對照折線圖（${by} 決算／${cy} 預算／${cy} 實際）</div>
+          <div class="ed-chart">${buildExpDetailPrintChart(chartData, by, cy)}</div>
+          <div class="ed-sec">二、支出科目彙總表</div>
+          <table class="ed-table ed-sum">
+            <colgroup><col style="width:13%"><col style="width:25%"><col style="width:14%"><col style="width:14%"><col style="width:14%"><col style="width:11%"><col style="width:9%"></colgroup>
+            <thead><tr><th class="ed-colh">大分類</th><th class="ed-colh">支出科目</th><th class="ed-colh">${by} 決算</th><th class="ed-colh">${cy} 預算</th><th class="ed-colh">${cy} 實際</th><th class="ed-colh">預算差額</th><th class="ed-colh">執行率</th></tr></thead>
             <tbody>${sumRows}</tbody>
           </table>`;
         const d = new Date();
@@ -3359,7 +3427,7 @@
           <h1 class="ed-title">${esc(s.orgName)} ${esc(s.currentYear)} 年度支出明細表（附件）</h1>
           <p class="ed-sub">範圍：${catFilter === 'all' ? '全部支出分類' : esc(catFilter)}　｜　單位：新臺幣元　｜　列印日期：${today}</p>
           ${summaryHtml}
-          <div class="ed-sec"${summaryHtml ? ' style="break-before:page;page-break-before:always"' : ''}>${summaryHtml ? '二、' : ''}附件：各支出科目逐筆支出明細</div>
+          <div class="ed-sec"${summaryHtml ? ' style="break-before:page;page-break-before:always"' : ''}>${summaryHtml ? '三、' : ''}附件：各支出科目逐筆支出明細</div>
           ${catsHtml}
           <div class="ed-grand"><span>支出總計（共 ${grandN} 筆）</span><span>預算合計：${fmt(grandB)}</span><span>實際支出：${fmt(grandA)}</span><span>預算差額：${fmt(grandB - grandA)}</span></div>`;
       }
